@@ -50,6 +50,7 @@ cp .env.example .env
 
 ```bash
 psql $DATABASE_URL -f db/schema.sql
+# Re-run this after schema updates (safe with IF NOT EXISTS).
 ```
 
 ### 4. Install dependencies
@@ -73,6 +74,20 @@ npm run dev
 # Client → http://localhost:5173
 ```
 
+## Production Readiness Notes
+
+- **CORS**: Set `CLIENT_URL` to your deployed frontend origin. Multiple origins are supported as a comma-separated list.
+- **Frontend API base**: Set `VITE_API_URL` in production (for example `https://api.yourdomain.com`). Leave empty in local dev to use Vite proxy.
+- **Rate limiting**: API now includes in-memory request limits for global traffic, auth, and recommendations.
+- **Health checks**:
+  - `GET /api/health` for liveness.
+  - `GET /api/ready` for readiness (includes DB connectivity check).
+- **Graceful shutdown**: Server handles `SIGINT`/`SIGTERM` and closes DB connections cleanly.
+
+## Deployment
+
+For provider-specific production setup (Render + Vercel), see [DEPLOY.md](/Users/vidyutsriram/CinemaChat/DEPLOY.md).
+
 ## Environment Variables
 
 | Variable | Description |
@@ -85,14 +100,20 @@ npm run dev
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Secret for signing JWTs |
 | `PORT` | Server port (default `3001`) |
+| `CLIENT_URL` | Allowed frontend origin(s) for CORS, comma-separated |
+| `REQUEST_BODY_LIMIT` | Max JSON body size for API requests (default `1mb`) |
+| `VITE_API_URL` | Optional absolute API host for frontend in production |
 
 ## Features
 
 - **Conversational search** — refine across turns ("make it darker", "only shows", "nothing before 2000")
+- **For You rails** — agentic personalized rows generated from your behavior and social context
 - **Semantic search** — Pinecone vector similarity over ~1000 TMDB movies
 - **People search** — actor/director filmography lookup via TMDB
 - **Collaboration queries** — "movies where Blanchett and Fincher worked together" via filmography intersection
-- **Social feed** — see friends' recent queries and top recommendations
+- **Social feed** — see friends' activity events (searches, reactions, watchlist actions)
 - **Taste profiles** — Claude-generated taste fingerprint from query history
 - **Collaborative recommendations** — "find something me and [friend] would both love"
 - **Reactions** — watched / loved / pass, stored per user
+- **Watchlist** — save titles from recommendations for later
+- **Onboarding taste setup** — favorite genres, moods, and films to improve cold-start recommendations

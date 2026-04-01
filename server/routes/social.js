@@ -5,6 +5,8 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAI } from 'openai';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { parsePositiveInt } from '../utils/validation.js';
+import { parseJsonFromModelText } from '../utils/aiResponse.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -12,6 +14,10 @@ const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_KEY = process.env.TMDB_API_KEY;
+const tmdbClient = axios.create({
+  baseURL: TMDB_BASE,
+  timeout: 12_000,
+});
 
 // ── Friends ──────────────────────────────────
 
@@ -36,10 +42,21 @@ router.get('/friends', requireAuth, async (req, res) => {
 });
 
 router.post('/friends/request', requireAuth, async (req, res) => {
-  const { friendId } = req.body;
-  if (!friendId) return res.status(400).json({ error: 'friendId is required' });
+  const friendId = parsePositiveInt(req.body?.friendId);
+  if (!friendId) return res.status(400).json({ error: 'Valid friendId is required' });
   if (friendId === req.userId) return res.status(400).json({ error: 'Cannot friend yourself' });
   try {
+    const existing = await pool.query(
+      `SELECT id, user_id, friend_id, status
+       FROM friendships
+       WHERE (user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)
+       LIMIT 1`,
+      [req.userId, friendId]
+    );
+    if (existing.rows.length > 0) {
+      return res.status(409).json({ error: 'Friend request already exists' });
+    }
+
     const result = await pool.query(
       `INSERT INTO friendships (user_id, friend_id, status)
        VALUES ($1, $2, 'pending')
@@ -56,8 +73,8 @@ router.post('/friends/request', requireAuth, async (req, res) => {
 });
 
 router.put('/friends/accept', requireAuth, async (req, res) => {
-  const { friendshipId } = req.body;
-  if (!friendshipId) return res.status(400).json({ error: 'friendshipId is required' });
+  const friendshipId = parsePositiveInt(req.body?.friendshipId);
+  if (!friendshipId) return res.status(400).json({ error: 'Valid friendshipId is required' });
   try {
     const result = await pool.query(
       `UPDATE friendships SET status = 'accepted'
@@ -78,46 +95,45 @@ router.put('/friends/accept', requireAuth, async (req, res) => {
 router.get('/feed', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT q.id AS query_id, q.query_text, q.created_at,
-              u.id AS user_id, u.display_name,
-              (SELECT json_build_object(
-                'tmdb_movie_id', r.tmdb_movie_id,
-                'rank', r.rank,
-                'claude_explanation', r.claude_explanation
-              )
-               FROM recommendations r
-               WHERE r.query_id = q.id
-               ORDER BY r.rank ASC
-               LIMIT 1) AS top_result
-       FROM queries q
-       JOIN users u ON u.id = q.user_id
-       WHERE q.user_id IN (
+      `SELECT a.id AS activity_id,
+              a.activity_type,
+              a.tmdb_movie_id,
+              a.metadata,
+              a.created_at,
+              u.id AS user_id,
+              u.display_name
+       FROM activity_events a
+       JOIN users u ON u.id = a.user_id
+       WHERE a.user_id IN (
          SELECT CASE WHEN f.user_id = $1 THEN f.friend_id ELSE f.user_id END
          FROM friendships f
          WHERE (f.user_id = $1 OR f.friend_id = $1) AND f.status = 'accepted'
        )
-       ORDER BY q.created_at DESC
+       ORDER BY a.created_at DESC
        LIMIT 30`,
       [req.userId]
     );
 
-    // Enrich top_result with TMDB poster
+    // Enrich movie-based events with TMDB details
     const enriched = await Promise.all(
       result.rows.map(async (row) => {
-        if (!row.top_result?.tmdb_movie_id) return row;
+        if (!row.tmdb_movie_id) return row;
         try {
-          const tmdb = await axios.get(`${TMDB_BASE}/movie/${row.top_result.tmdb_movie_id}`, {
+          const tmdb = await tmdbClient.get(`/movie/${row.tmdb_movie_id}`, {
             params: { api_key: TMDB_KEY, language: 'en-US' },
           });
+
+          const movie = {
+            tmdbMovieId: row.tmdb_movie_id,
+            title: tmdb.data.title,
+            poster: tmdb.data.poster_path
+              ? `https://image.tmdb.org/t/p/w300${tmdb.data.poster_path}`
+              : null,
+          };
+
           return {
             ...row,
-            top_result: {
-              ...row.top_result,
-              title: tmdb.data.title,
-              poster: tmdb.data.poster_path
-                ? `https://image.tmdb.org/t/p/w300${tmdb.data.poster_path}`
-                : null,
-            },
+            movie,
           };
         } catch {
           return row;
@@ -135,8 +151,8 @@ router.get('/feed', requireAuth, async (req, res) => {
 // ── Collaborative Query ──────────────────────────────────
 
 router.post('/collaborative', requireAuth, async (req, res) => {
-  const { friendId } = req.body;
-  if (!friendId) return res.status(400).json({ error: 'friendId is required' });
+  const friendId = parsePositiveInt(req.body?.friendId);
+  if (!friendId) return res.status(400).json({ error: 'Valid friendId is required' });
 
   try {
     // Verify friendship
@@ -180,7 +196,7 @@ router.post('/collaborative', requireAuth, async (req, res) => {
     const movieDetails = await Promise.all(
       [...new Set(allLovedIds)].slice(0, 10).map(async (id) => {
         try {
-          const r = await axios.get(`${TMDB_BASE}/movie/${id}`, { params: { api_key: TMDB_KEY } });
+          const r = await tmdbClient.get(`/movie/${id}`, { params: { api_key: TMDB_KEY } });
           return r.data;
         } catch { return null; }
       })
@@ -212,7 +228,7 @@ router.post('/collaborative', requireAuth, async (req, res) => {
     const semanticMovies = await Promise.all(
       semanticCandidates.slice(0, 10).map(async (id) => {
         try {
-          const r = await axios.get(`${TMDB_BASE}/movie/${id}`, { params: { api_key: TMDB_KEY } });
+          const r = await tmdbClient.get(`/movie/${id}`, { params: { api_key: TMDB_KEY } });
           return r.data;
         } catch { return null; }
       })
@@ -252,10 +268,11 @@ Only valid JSON, no markdown.`,
       ],
     });
 
-    let ranked = [];
-    try { ranked = JSON.parse(msg.content[0].text); } catch {}
+    const textBlock = msg.content.find((block) => block.type === 'text');
+    const parsed = parseJsonFromModelText(textBlock?.text || '');
+    const ranked = Array.isArray(parsed) ? parsed : [];
 
-    const results = ranked.map(({ tmdbId, explanation }) => {
+    let results = ranked.map(({ tmdbId, explanation }) => {
       const movie = deduped.find((m) => m?.id === tmdbId);
       if (!movie) return null;
       return {
@@ -269,6 +286,19 @@ Only valid JSON, no markdown.`,
         explanation,
       };
     }).filter(Boolean);
+
+    if (results.length === 0) {
+      results = deduped.slice(0, 3).map((movie) => ({
+        tmdbId: movie.id,
+        title: movie.title,
+        year: movie.release_date?.slice(0, 4),
+        rating: movie.vote_average?.toFixed(1),
+        genres: movie.genres?.map((g) => g.name).slice(0, 3),
+        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
+        overview: movie.overview,
+        explanation: "A strong overlap pick based on both users' recent activity and liked titles.",
+      }));
+    }
 
     res.json({ results, userAName, userBName });
   } catch (err) {

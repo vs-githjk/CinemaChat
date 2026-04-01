@@ -29,6 +29,16 @@ export default function Layout() {
                 }`
               }
             >
+              For You
+            </NavLink>
+            <NavLink
+              to="/discover"
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  isActive ? 'text-white bg-cinema-border' : 'text-gray-400 hover:text-white'
+                }`
+              }
+            >
               Discover
             </NavLink>
             <NavLink

@@ -31,10 +31,12 @@ export default function Chat() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const conversationHistory = messages.flatMap((m) => [
-    { role: 'user', content: m.query },
-    { role: 'assistant', content: m.results.map((r) => r.title).join(', ') },
-  ]);
+  const conversationHistory = messages
+    .filter((m) => m.type === 'assistant' && m.query && Array.isArray(m.results))
+    .flatMap((m) => [
+      { role: 'user', content: m.query },
+      { role: 'assistant', content: m.results.map((r) => r.title).join(', ') },
+    ]);
 
   const sendQuery = async (query) => {
     if (!query.trim() || loading) return;

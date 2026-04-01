@@ -15,6 +15,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [collabLoading, setCollabLoading] = useState(false);
   const [isFriend, setIsFriend] = useState(false);
+  const [collabError, setCollabError] = useState('');
 
   useEffect(() => {
     setLoading(true);
@@ -31,11 +32,12 @@ export default function Profile() {
 
   const handleCollaborative = async () => {
     setCollabLoading(true);
+    setCollabError('');
     try {
       const r = await getCollaborative(parseInt(id));
       setCollaborative(r.data);
     } catch (err) {
-      alert(err.response?.data?.error || 'Could not get collaborative recommendations');
+      setCollabError(err.response?.data?.error || 'Could not get collaborative recommendations');
     } finally {
       setCollabLoading(false);
     }
@@ -101,6 +103,12 @@ export default function Profile() {
       )}
 
       {/* Collaborative Results */}
+      {collabError && (
+        <div className="bg-red-900/20 border border-red-700 rounded-xl px-4 py-3 text-sm text-red-300">
+          {collabError}
+        </div>
+      )}
+
       {collaborative && (
         <div className="space-y-3">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider">

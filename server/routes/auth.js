@@ -3,13 +3,18 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { isNonEmptyString } from '../utils/validation.js';
 
 const router = Router();
 
 router.post('/register', async (req, res) => {
   const { email, password, displayName } = req.body;
-  if (!email || !password || !displayName) {
+  if (!isNonEmptyString(email) || !isNonEmptyString(password) || !isNonEmptyString(displayName)) {
     return res.status(400).json({ error: 'email, password, and displayName are required' });
+  }
+  if (password.trim().length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (displayName.trim().length < 2 || displayName.trim().length > 50) {
+    return res.status(400).json({ error: 'displayName must be 2-50 characters' });
   }
   try {
     const passwordHash = await bcrypt.hash(password, 12);
@@ -29,7 +34,9 @@ router.post('/register', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'email and password are required' });
+  if (!isNonEmptyString(email) || !isNonEmptyString(password)) {
+    return res.status(400).json({ error: 'email and password are required' });
+  }
   try {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase().trim()]);
     const user = result.rows[0];

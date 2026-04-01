@@ -5,6 +5,13 @@ import { Pinecone } from '@pinecone-database/pinecone';
 import { OpenAI } from 'openai';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import {
+  parsePositiveInt,
+  sanitizeConversationHistory,
+  sanitizeQuery,
+} from '../utils/validation.js';
+import { normalizeRecommendations, parseJsonFromModelText } from '../utils/aiResponse.js';
+import { logActivity } from '../utils/activity.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -13,6 +20,16 @@ const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_KEY = process.env.TMDB_API_KEY;
+const tmdbClient = axios.create({
+  baseURL: TMDB_BASE,
+  timeout: 12_000,
+});
+const DEFAULT_FOR_YOU_SEEDS = [
+  { title: 'Because You Love Character-Driven Stories', query: 'emotionally rich character-driven dramas with strong performances', subtitle: 'Personal picks based on your profile' },
+  { title: 'Hidden Gems For Tonight', query: 'underrated cinematic gems with high critical acclaim and memorable tone', subtitle: 'Great films you may have missed' },
+  { title: 'Your Social Overlap', query: 'crowd-pleasing but thoughtful movies friends might enjoy together', subtitle: 'Inspired by your friends activity' },
+  { title: 'Fresh Vibe Shift', query: 'a fresh cinematic direction adjacent to thriller, drama, and modern auteur films', subtitle: 'Branch out without losing your taste' },
+];
 
 // ──────────────────────────────────────────────
 // Tool implementations
@@ -38,13 +55,13 @@ async function searchMoviesByVibe(query, topK = 10) {
 }
 
 async function lookupPersonFilmography(name, role = 'auto') {
-  const searchResp = await axios.get(`${TMDB_BASE}/search/person`, {
+  const searchResp = await tmdbClient.get('/search/person', {
     params: { api_key: TMDB_KEY, query: name, language: 'en-US' },
   });
   const person = searchResp.data.results[0];
   if (!person) return { error: `Person "${name}" not found` };
 
-  const creditsResp = await axios.get(`${TMDB_BASE}/person/${person.id}/movie_credits`, {
+  const creditsResp = await tmdbClient.get(`/person/${person.id}/movie_credits`, {
     params: { api_key: TMDB_KEY, language: 'en-US' },
   });
 
@@ -79,7 +96,7 @@ async function lookupPersonFilmography(name, role = 'auto') {
 }
 
 async function getMovieDetails(tmdbId) {
-  const resp = await axios.get(`${TMDB_BASE}/movie/${tmdbId}`, {
+  const resp = await tmdbClient.get(`/movie/${tmdbId}`, {
     params: { api_key: TMDB_KEY, language: 'en-US', append_to_response: 'videos,credits' },
   });
   const m = resp.data;
@@ -304,7 +321,10 @@ Respond ONLY with the JSON — no markdown, no preamble.`;
       // Extract the final text response
       const textBlock = response.content.find((b) => b.type === 'text');
       if (!textBlock) throw new Error('No text in final Claude response');
-      return JSON.parse(textBlock.text);
+      const parsed = parseJsonFromModelText(textBlock.text);
+      if (!parsed) throw new Error('Could not parse model response as JSON');
+      const recommendations = normalizeRecommendations(parsed);
+      return { recommendations };
     }
 
     if (response.stop_reason === 'tool_use') {
@@ -338,24 +358,229 @@ Respond ONLY with the JSON — no markdown, no preamble.`;
   throw new Error('Agentic loop exceeded maximum iterations');
 }
 
+async function fallbackRecommendations(userQuery) {
+  const vibeMatches = await searchMoviesByVibe(userQuery, 5);
+  const details = await Promise.all(
+    vibeMatches.slice(0, 5).map(async (match) => {
+      try {
+        const movie = await getMovieDetails(match.tmdbId);
+        return {
+          ...movie,
+          explanation: 'A fallback pick based on semantic similarity to your query.',
+        };
+      } catch {
+        return null;
+      }
+    })
+  );
+  return details.filter(Boolean);
+}
+
+async function getUserTasteSnapshot(userId) {
+  const [queriesResult, reactionsResult, onboardingResult] = await Promise.all([
+    pool.query(
+      'SELECT query_text FROM queries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 25',
+      [userId]
+    ),
+    pool.query(
+      `SELECT tmdb_movie_id, reaction
+       FROM reactions
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT 40`,
+      [userId]
+    ),
+    pool.query(
+      `SELECT favorite_genres, favorite_movies, moods
+       FROM onboarding_profiles
+       WHERE user_id = $1
+       LIMIT 1`,
+      [userId]
+    ),
+  ]);
+
+  const queryTexts = queriesResult.rows.map((r) => r.query_text);
+  const lovedIds = reactionsResult.rows
+    .filter((r) => r.reaction === 'loved')
+    .map((r) => r.tmdb_movie_id)
+    .slice(0, 10);
+  const watchedCount = reactionsResult.rows.filter((r) => r.reaction === 'watched').length;
+  const passCount = reactionsResult.rows.filter((r) => r.reaction === 'pass').length;
+  const friendProfile = await getFriendTasteProfile(userId);
+
+  const lovedTitles = await Promise.all(
+    lovedIds.map(async (movieId) => {
+      try {
+        const response = await tmdbClient.get(`/movie/${movieId}`, {
+          params: { api_key: TMDB_KEY, language: 'en-US' },
+        });
+        return response.data?.title || null;
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  return {
+    recentQueries: queryTexts,
+    lovedTitles: lovedTitles.filter(Boolean),
+    watchedCount,
+    passCount,
+    friendProfile,
+    onboarding: onboardingResult.rows[0] || null,
+  };
+}
+
+function normalizeRailSeeds(parsed) {
+  const rails = Array.isArray(parsed?.rails) ? parsed.rails : [];
+  const normalized = rails
+    .map((rail) => ({
+      title: typeof rail?.title === 'string' ? rail.title.trim().slice(0, 80) : '',
+      query: typeof rail?.query === 'string' ? rail.query.trim().slice(0, 220) : '',
+      subtitle: typeof rail?.subtitle === 'string' ? rail.subtitle.trim().slice(0, 120) : '',
+    }))
+    .filter((rail) => rail.title && rail.query)
+    .slice(0, 4);
+
+  return normalized.length > 0 ? normalized : DEFAULT_FOR_YOU_SEEDS;
+}
+
+async function generateForYouSeeds(userId) {
+  const taste = await getUserTasteSnapshot(userId);
+
+  const prompt = `You are creating a personalized movie home feed.
+
+User signals:
+- Recent searches: ${taste.recentQueries.join(' | ') || 'none'}
+- Loved titles: ${taste.lovedTitles.join(' | ') || 'none'}
+- Watched count: ${taste.watchedCount}
+- Pass count: ${taste.passCount}
+- Onboarding genres: ${taste.onboarding?.favorite_genres?.join(' | ') || 'none'}
+- Onboarding favorite movies: ${taste.onboarding?.favorite_movies?.join(' | ') || 'none'}
+- Onboarding moods: ${taste.onboarding?.moods?.join(' | ') || 'none'}
+- Friend context: ${taste.friendProfile.summary}
+- Friend recent terms: ${taste.friendProfile.friendsRecentSearchTerms.join(' | ') || 'none'}
+
+Return JSON:
+{
+  "rails": [
+    { "title": string, "subtitle": string, "query": string }
+  ]
+}
+
+Rules:
+- Exactly 4 rails
+- Distinct tones per rail
+- Query must be a strong semantic-search style prompt
+- No markdown`;
+
+  try {
+    const response = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 700,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    const text = response.content.find((b) => b.type === 'text')?.text || '';
+    const parsed = parseJsonFromModelText(text);
+    return normalizeRailSeeds(parsed);
+  } catch (err) {
+    console.error('Failed to generate for-you seeds:', err.message);
+    return DEFAULT_FOR_YOU_SEEDS;
+  }
+}
+
+async function buildForYouRails(userId) {
+  const seeds = await generateForYouSeeds(userId);
+  const rails = [];
+  const friendOverlap = await getFriendTasteProfile(userId);
+  const overlapIds = friendOverlap.friendsLovedMovieIds.slice(0, 3);
+
+  for (let i = 0; i < seeds.length; i++) {
+    const seed = seeds[i];
+    let recommendations = [];
+
+    try {
+      const result = await runAgenticLoop(seed.query, [], userId);
+      recommendations = result.recommendations;
+    } catch {
+      recommendations = await fallbackRecommendations(seed.query);
+    }
+
+    rails.push({
+      id: `rail-${i + 1}`,
+      title: seed.title,
+      subtitle: seed.subtitle || 'Curated by your taste profile',
+      query: seed.query,
+      results: recommendations.slice(0, 5),
+    });
+  }
+
+  if (overlapIds.length > 0) {
+    const friendMovies = await Promise.all(
+      overlapIds.map(async (movieId) => {
+        try {
+          const movie = await getMovieDetails(movieId);
+          return {
+            ...movie,
+            explanation: "A friend-overlap pick from titles your circle has already loved.",
+          };
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    rails.unshift({
+      id: 'rail-friends-overlap',
+      title: 'Trending In Your Circle',
+      subtitle: 'Movies your friends already loved',
+      query: 'friends overlap',
+      results: friendMovies.filter(Boolean),
+    });
+  }
+
+  return rails;
+}
+
 // ──────────────────────────────────────────────
 // Routes
 // ──────────────────────────────────────────────
 
 router.post('/', requireAuth, async (req, res) => {
-  const { query, conversationHistory = [] } = req.body;
-  if (!query?.trim()) return res.status(400).json({ error: 'query is required' });
+  const query = sanitizeQuery(req.body?.query, { maxLength: 500 });
+  const conversationHistory = sanitizeConversationHistory(req.body?.conversationHistory);
+  if (!query) return res.status(400).json({ error: 'query is required' });
 
   try {
     // Save the query to DB
     const queryResult = await pool.query(
       'INSERT INTO queries (user_id, query_text) VALUES ($1, $2) RETURNING id',
-      [req.userId, query.trim()]
+      [req.userId, query]
     );
     const queryId = queryResult.rows[0].id;
+    await logActivity({
+      userId: req.userId,
+      type: 'query',
+      metadata: { query, queryId },
+    });
 
     // Run the Claude agentic loop
-    const { recommendations } = await runAgenticLoop(query.trim(), conversationHistory, req.userId);
+    let recommendations = [];
+    try {
+      const result = await runAgenticLoop(query, conversationHistory, req.userId);
+      if (!Array.isArray(result.recommendations) || result.recommendations.length === 0) {
+        throw new Error('No valid recommendations from model');
+      }
+      recommendations = result.recommendations;
+    } catch (err) {
+      console.error('Agentic loop failed, using fallback:', err.message);
+      recommendations = await fallbackRecommendations(query);
+    }
+
+    if (recommendations.length === 0) {
+      return res.status(502).json({ error: 'Failed to get recommendations for this query' });
+    }
 
     // Persist recommendations to DB
     for (let i = 0; i < recommendations.length; i++) {
@@ -375,17 +600,33 @@ router.post('/', requireAuth, async (req, res) => {
 
 router.post('/reaction', requireAuth, async (req, res) => {
   const { tmdbMovieId, reaction } = req.body;
-  if (!tmdbMovieId || !reaction) return res.status(400).json({ error: 'tmdbMovieId and reaction are required' });
-  if (!['watched', 'loved', 'pass'].includes(reaction)) return res.status(400).json({ error: 'Invalid reaction' });
+  const movieId = parsePositiveInt(tmdbMovieId);
+  if (!movieId) return res.status(400).json({ error: 'Valid tmdbMovieId is required' });
+  if (reaction !== null && !['watched', 'loved', 'pass'].includes(reaction)) {
+    return res.status(400).json({ error: 'Invalid reaction' });
+  }
 
   try {
+    if (reaction === null) {
+      await pool.query(
+        'DELETE FROM reactions WHERE user_id = $1 AND tmdb_movie_id = $2',
+        [req.userId, movieId]
+      );
+      return res.json({ success: true, reaction: null });
+    }
+
     await pool.query(
       `INSERT INTO reactions (user_id, tmdb_movie_id, reaction)
        VALUES ($1, $2, $3)
        ON CONFLICT (user_id, tmdb_movie_id) DO UPDATE SET reaction = $3`,
-      [req.userId, tmdbMovieId, reaction]
+      [req.userId, movieId, reaction]
     );
-    res.json({ success: true });
+    await logActivity({
+      userId: req.userId,
+      type: `reaction_${reaction}`,
+      tmdbMovieId: movieId,
+    });
+    res.json({ success: true, reaction });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -411,7 +652,10 @@ router.get('/history', requireAuth, async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT q.id, q.query_text, q.created_at,
-              json_agg(r ORDER BY r.rank) AS recommendations
+              COALESCE(
+                json_agg(r ORDER BY r.rank) FILTER (WHERE r.id IS NOT NULL),
+                '[]'::json
+              ) AS recommendations
        FROM queries q
        LEFT JOIN recommendations r ON r.query_id = q.id
        WHERE q.user_id = $1
@@ -421,6 +665,87 @@ router.get('/history', requireAuth, async (req, res) => {
       [req.userId]
     );
     res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.get('/for-you', requireAuth, async (req, res) => {
+  try {
+    const [rails, watchlistResult] = await Promise.all([
+      buildForYouRails(req.userId),
+      pool.query('SELECT tmdb_movie_id FROM watchlist_items WHERE user_id = $1', [req.userId]),
+    ]);
+
+    const watchlistMap = {};
+    for (const row of watchlistResult.rows) watchlistMap[row.tmdb_movie_id] = true;
+
+    res.json({
+      generatedAt: new Date().toISOString(),
+      rails,
+      watchlist: watchlistMap,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to build For You feed' });
+  }
+});
+
+router.get('/watchlist', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT tmdb_movie_id, created_at
+       FROM watchlist_items
+       WHERE user_id = $1
+       ORDER BY created_at DESC`,
+      [req.userId]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/watchlist', requireAuth, async (req, res) => {
+  const movieId = parsePositiveInt(req.body?.tmdbMovieId);
+  if (!movieId) return res.status(400).json({ error: 'Valid tmdbMovieId is required' });
+
+  try {
+    await pool.query(
+      `INSERT INTO watchlist_items (user_id, tmdb_movie_id)
+       VALUES ($1, $2)
+       ON CONFLICT (user_id, tmdb_movie_id) DO NOTHING`,
+      [req.userId, movieId]
+    );
+    await logActivity({
+      userId: req.userId,
+      type: 'watchlist_add',
+      tmdbMovieId: movieId,
+    });
+    res.status(201).json({ success: true, tmdbMovieId: movieId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.delete('/watchlist/:tmdbMovieId', requireAuth, async (req, res) => {
+  const movieId = parsePositiveInt(req.params?.tmdbMovieId);
+  if (!movieId) return res.status(400).json({ error: 'Valid tmdbMovieId is required' });
+
+  try {
+    await pool.query(
+      'DELETE FROM watchlist_items WHERE user_id = $1 AND tmdb_movie_id = $2',
+      [req.userId, movieId]
+    );
+    await logActivity({
+      userId: req.userId,
+      type: 'watchlist_remove',
+      tmdbMovieId: movieId,
+    });
+    res.json({ success: true, tmdbMovieId: movieId });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

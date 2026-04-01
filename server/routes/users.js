@@ -2,19 +2,77 @@ import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { parsePositiveInt, sanitizeQuery } from '../utils/validation.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+function sanitizeStringArray(value, { maxItems = 8, maxLength = 40 } = {}) {
+  if (!Array.isArray(value)) return [];
+  const cleaned = value
+    .map((item) => (typeof item === 'string' ? item.trim() : ''))
+    .filter(Boolean)
+    .map((item) => item.slice(0, maxLength));
+  return [...new Set(cleaned)].slice(0, maxItems);
+}
+
+router.get('/onboarding', requireAuth, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT favorite_genres, favorite_movies, moods, updated_at
+       FROM onboarding_profiles
+       WHERE user_id = $1
+       LIMIT 1`,
+      [req.userId]
+    );
+    if (result.rows.length === 0) {
+      return res.json({ completed: false, profile: null });
+    }
+    return res.json({ completed: true, profile: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
+router.post('/onboarding', requireAuth, async (req, res) => {
+  const favoriteGenres = sanitizeStringArray(req.body?.favoriteGenres, { maxItems: 10, maxLength: 30 });
+  const favoriteMovies = sanitizeStringArray(req.body?.favoriteMovies, { maxItems: 10, maxLength: 80 });
+  const moods = sanitizeStringArray(req.body?.moods, { maxItems: 8, maxLength: 30 });
+
+  if (favoriteGenres.length === 0 && favoriteMovies.length === 0 && moods.length === 0) {
+    return res.status(400).json({ error: 'Provide at least one onboarding preference' });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO onboarding_profiles (user_id, favorite_genres, favorite_movies, moods, updated_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id)
+       DO UPDATE SET
+         favorite_genres = EXCLUDED.favorite_genres,
+         favorite_movies = EXCLUDED.favorite_movies,
+         moods = EXCLUDED.moods,
+         updated_at = NOW()
+       RETURNING favorite_genres, favorite_movies, moods, updated_at`,
+      [req.userId, favoriteGenres, favoriteMovies, moods]
+    );
+    return res.status(201).json({ success: true, profile: result.rows[0] });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Server error' });
+  }
+});
+
 router.get('/search', requireAuth, async (req, res) => {
-  const { q } = req.query;
-  if (!q?.trim()) return res.status(400).json({ error: 'q is required' });
+  const q = sanitizeQuery(req.query?.q, { maxLength: 120 });
+  if (!q) return res.status(400).json({ error: 'q is required' });
   try {
     const result = await pool.query(
       `SELECT id, display_name, email FROM users
        WHERE (display_name ILIKE $1 OR email ILIKE $1) AND id != $2
        LIMIT 10`,
-      [`%${q.trim()}%`, req.userId]
+      [`%${q}%`, req.userId]
     );
     res.json(result.rows);
   } catch (err) {
@@ -24,7 +82,8 @@ router.get('/search', requireAuth, async (req, res) => {
 });
 
 router.get('/:id/profile', requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = parsePositiveInt(req.params?.id);
+  if (!id) return res.status(400).json({ error: 'Invalid user id' });
   try {
     const userResult = await pool.query(
       'SELECT id, display_name, email, created_at FROM users WHERE id = $1',
@@ -63,7 +122,8 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
 });
 
 router.get('/:id/taste', requireAuth, async (req, res) => {
-  const { id } = req.params;
+  const id = parsePositiveInt(req.params?.id);
+  if (!id) return res.status(400).json({ error: 'Invalid user id' });
   try {
     const queriesResult = await pool.query(
       'SELECT query_text FROM queries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20',
@@ -93,7 +153,7 @@ Write only the fingerprint text, no labels or headers.`,
     const tasteFingerprint = msg.content[0].text.trim();
 
     // Cache taste in user record if it's their own profile
-    if (parseInt(id) === req.userId) {
+    if (id === req.userId) {
       // Store in future — for now just return
     }
 

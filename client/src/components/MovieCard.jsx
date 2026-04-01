@@ -2,7 +2,13 @@ import { useState } from 'react';
 import { setReaction } from '../api/client.js';
 import ReactionButtons from './ReactionButtons.jsx';
 
-export default function MovieCard({ movie, reaction: initialReaction, onReaction }) {
+export default function MovieCard({
+  movie,
+  reaction: initialReaction,
+  onReaction,
+  watchlisted = false,
+  onToggleWatchlist,
+}) {
   const [expanded, setExpanded] = useState(false);
   const [reaction, setLocalReaction] = useState(initialReaction || null);
 
@@ -11,8 +17,11 @@ export default function MovieCard({ movie, reaction: initialReaction, onReaction
     setLocalReaction(next);
     if (onReaction) onReaction(movie.tmdbId, next);
     try {
-      if (next) await setReaction({ tmdbMovieId: movie.tmdbId, reaction: next });
-    } catch {}
+      await setReaction({ tmdbMovieId: movie.tmdbId, reaction: next });
+    } catch {
+      setLocalReaction(reaction);
+      if (onReaction) onReaction(movie.tmdbId, reaction);
+    }
   };
 
   return (
@@ -61,7 +70,21 @@ export default function MovieCard({ movie, reaction: initialReaction, onReaction
 
           {/* Actions */}
           <div className="flex items-center justify-between mt-3">
-            <ReactionButtons reaction={reaction} onReaction={handleReaction} />
+            <div className="flex items-center gap-2">
+              <ReactionButtons reaction={reaction} onReaction={handleReaction} />
+              {typeof onToggleWatchlist === 'function' && (
+                <button
+                  onClick={() => onToggleWatchlist(movie.tmdbId)}
+                  className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
+                    watchlisted
+                      ? 'border-cinema-accent text-cinema-accent'
+                      : 'border-cinema-border text-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  {watchlisted ? 'Saved' : '+ Watchlist'}
+                </button>
+              )}
+            </div>
             <button
               onClick={() => setExpanded(!expanded)}
               className="text-xs text-gray-500 hover:text-gray-300 transition-colors"

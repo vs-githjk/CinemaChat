@@ -13,6 +13,25 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function activityCopy(item) {
+  switch (item.activity_type) {
+    case 'query':
+      return `searched: "${item.metadata?.query || 'something new'}"`;
+    case 'reaction_loved':
+      return 'loved this movie';
+    case 'reaction_watched':
+      return 'watched this movie';
+    case 'reaction_pass':
+      return 'passed on this movie';
+    case 'watchlist_add':
+      return 'saved this to watchlist';
+    case 'watchlist_remove':
+      return 'removed this from watchlist';
+    default:
+      return 'had new activity';
+  }
+}
+
 export default function Feed() {
   const user = useAuthStore((s) => s.user);
   const [feed, setFeed] = useState([]);
@@ -86,15 +105,15 @@ export default function Feed() {
             <div className="text-center py-12">
               <div className="text-4xl mb-3">📡</div>
               <p className="text-gray-500">No activity yet.</p>
-              <p className="text-sm text-gray-600 mt-1">Add friends to see their discoveries here.</p>
+              <p className="text-sm text-gray-600 mt-1">Add friends to see their discoveries and watch actions here.</p>
             </div>
           ) : (
             feed.map((item) => (
-              <div key={item.query_id} className="card p-4 flex gap-4">
-                {item.top_result?.poster && (
+              <div key={item.activity_id} className="card p-4 flex gap-4">
+                {item.movie?.poster && (
                   <img
-                    src={item.top_result.poster}
-                    alt={item.top_result.title}
+                    src={item.movie.poster}
+                    alt={item.movie.title}
                     className="w-14 h-20 object-cover rounded-md flex-shrink-0"
                   />
                 )}
@@ -109,11 +128,11 @@ export default function Feed() {
                     <span className="text-gray-600 text-xs">{timeAgo(item.created_at)}</span>
                   </div>
                   <p className="text-sm text-gray-400 mb-1">
-                    searched: <span className="text-gray-200 italic">"{item.query_text}"</span>
+                    <span className="text-gray-200">{activityCopy(item)}</span>
                   </p>
-                  {item.top_result?.title && (
+                  {item.movie?.title && (
                     <p className="text-xs text-gray-500">
-                      Top result: <span className="text-gray-300">{item.top_result.title}</span>
+                      Movie: <span className="text-gray-300">{item.movie.title}</span>
                     </p>
                   )}
                 </div>
