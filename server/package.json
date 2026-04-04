@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "dev": "node --watch index.js"
+    "dev": "node --watch index.js",
+    "test:integration": "node --test test/integration/**/*.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.52.0",
@@ -17,5 +18,8 @@
     "jsonwebtoken": "^9.0.2",
     "openai": "^4.28.0",
     "pg": "^8.11.3"
+  },
+  "devDependencies": {
+    "supertest": "^7.1.1"
   }
 }

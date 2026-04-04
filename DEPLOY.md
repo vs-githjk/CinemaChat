@@ -57,6 +57,8 @@ npm run build:index
 - `NODE_ENV=production`
 - `PORT=10000` (Render sets port dynamically too; keeping this is fine)
 - `REQUEST_BODY_LIMIT=1mb`
+- `REDIS_URL=<optional>`
+- `SENTRY_DSN=<optional>`
 - `CLIENT_URL=https://<your-vercel-domain>`
 - `DATABASE_URL=<your database url>`
 - `JWT_SECRET=<your jwt secret>`
@@ -108,6 +110,7 @@ Run this checklist in production:
 8. Friend request + accept works.
 9. Feed shows friend activity events.
 10. Collaborative recommendations work.
+11. Mandatory onboarding gate works (new users are routed to onboarding before app usage).
 
 ## 7. Final Pre-Launch Checklist
 
@@ -124,6 +127,7 @@ Run this checklist in production:
 - [ ] Pinecone index built and populated.
 - [ ] Health/readiness checks passing.
 - [ ] API logs monitored for 4xx/5xx spikes.
+- [ ] Integration tests pass (`npm --prefix server run test:integration`).
 
 ### Product Quality
 

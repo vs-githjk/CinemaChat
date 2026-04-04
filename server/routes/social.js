@@ -7,6 +7,8 @@ import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parsePositiveInt } from '../utils/validation.js';
 import { parseJsonFromModelText } from '../utils/aiResponse.js';
+import { createCacheProvider } from '../cache/provider.js';
+import { reportError } from '../observability/monitoring.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -18,6 +20,26 @@ const tmdbClient = axios.create({
   baseURL: TMDB_BASE,
   timeout: 12_000,
 });
+const cache = createCacheProvider();
+
+async function getMovieSummary(tmdbMovieId) {
+  const cacheKey = `tmdb:movie-summary:${tmdbMovieId}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
+  const tmdb = await tmdbClient.get(`/movie/${tmdbMovieId}`, {
+    params: { api_key: TMDB_KEY, language: 'en-US' },
+  });
+  const summary = {
+    tmdbMovieId,
+    title: tmdb.data.title,
+    poster: tmdb.data.poster_path
+      ? `https://image.tmdb.org/t/p/w300${tmdb.data.poster_path}`
+      : null,
+  };
+  await cache.set(cacheKey, summary, 1800);
+  return summary;
+}
 
 // ── Friends ──────────────────────────────────
 
@@ -119,17 +141,7 @@ router.get('/feed', requireAuth, async (req, res) => {
       result.rows.map(async (row) => {
         if (!row.tmdb_movie_id) return row;
         try {
-          const tmdb = await tmdbClient.get(`/movie/${row.tmdb_movie_id}`, {
-            params: { api_key: TMDB_KEY, language: 'en-US' },
-          });
-
-          const movie = {
-            tmdbMovieId: row.tmdb_movie_id,
-            title: tmdb.data.title,
-            poster: tmdb.data.poster_path
-              ? `https://image.tmdb.org/t/p/w300${tmdb.data.poster_path}`
-              : null,
-          };
+          const movie = await getMovieSummary(row.tmdb_movie_id);
 
           return {
             ...row,
@@ -143,7 +155,11 @@ router.get('/feed', requireAuth, async (req, res) => {
 
     res.json(enriched);
   } catch (err) {
-    console.error(err);
+    reportError(err, {
+      requestId: req.requestId,
+      operation: 'social_feed_route',
+      userId: req.userId,
+    });
     res.status(500).json({ error: 'Server error' });
   }
 });

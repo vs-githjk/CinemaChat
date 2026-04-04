@@ -12,6 +12,9 @@ import {
 } from '../utils/validation.js';
 import { normalizeRecommendations, parseJsonFromModelText } from '../utils/aiResponse.js';
 import { logActivity } from '../utils/activity.js';
+import { createCacheProvider } from '../cache/provider.js';
+import { logger } from '../observability/logger.js';
+import { reportError } from '../observability/monitoring.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -24,6 +27,7 @@ const tmdbClient = axios.create({
   baseURL: TMDB_BASE,
   timeout: 12_000,
 });
+const cache = createCacheProvider();
 const DEFAULT_FOR_YOU_SEEDS = [
   { title: 'Because You Love Character-Driven Stories', query: 'emotionally rich character-driven dramas with strong performances', subtitle: 'Personal picks based on your profile' },
   { title: 'Hidden Gems For Tonight', query: 'underrated cinematic gems with high critical acclaim and memorable tone', subtitle: 'Great films you may have missed' },
@@ -36,6 +40,10 @@ const DEFAULT_FOR_YOU_SEEDS = [
 // ──────────────────────────────────────────────
 
 async function searchMoviesByVibe(query, topK = 10) {
+  const cacheKey = `vibe:${topK}:${query.toLowerCase()}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   const embedResp = await openai.embeddings.create({
     model: 'text-embedding-3-small',
     input: query,
@@ -43,7 +51,7 @@ async function searchMoviesByVibe(query, topK = 10) {
   const vector = embedResp.data[0].embedding;
   const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
   const results = await index.query({ vector, topK, includeMetadata: true });
-  return results.matches.map((m) => ({
+  const matches = results.matches.map((m) => ({
     tmdbId: parseInt(m.id),
     score: m.score,
     title: m.metadata?.title || '',
@@ -52,6 +60,8 @@ async function searchMoviesByVibe(query, topK = 10) {
     rating: m.metadata?.rating || 0,
     genres: m.metadata?.genres || [],
   }));
+  await cache.set(cacheKey, matches, 90);
+  return matches;
 }
 
 async function lookupPersonFilmography(name, role = 'auto') {
@@ -96,13 +106,17 @@ async function lookupPersonFilmography(name, role = 'auto') {
 }
 
 async function getMovieDetails(tmdbId) {
+  const cacheKey = `tmdb:movie-details:${tmdbId}`;
+  const cached = await cache.get(cacheKey);
+  if (cached) return cached;
+
   const resp = await tmdbClient.get(`/movie/${tmdbId}`, {
     params: { api_key: TMDB_KEY, language: 'en-US', append_to_response: 'videos,credits' },
   });
   const m = resp.data;
   const trailer = m.videos?.results?.find((v) => v.type === 'Trailer' && v.site === 'YouTube');
   const director = m.credits?.crew?.find((c) => c.job === 'Director');
-  return {
+  const details = {
     tmdbId: m.id,
     title: m.title,
     year: m.release_date?.slice(0, 4) || '',
@@ -116,6 +130,8 @@ async function getMovieDetails(tmdbId) {
     poster: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : null,
     trailerUrl: trailer ? `https://www.youtube.com/watch?v=${trailer.key}` : null,
   };
+  await cache.set(cacheKey, details, 1800);
+  return details;
 }
 
 async function getFriendTasteProfile(userId) {
@@ -255,6 +271,7 @@ async function executeTool(name, input, userId) {
 // ──────────────────────────────────────────────
 
 async function runAgenticLoop(userQuery, conversationHistory, userId) {
+  const startedAt = Date.now();
   const systemPrompt = `You are CinemaChat's AI film expert. Your job is to help users find great movies and TV shows.
 
 You have access to tools for:
@@ -324,6 +341,12 @@ Respond ONLY with the JSON — no markdown, no preamble.`;
       const parsed = parseJsonFromModelText(textBlock.text);
       if (!parsed) throw new Error('Could not parse model response as JSON');
       const recommendations = normalizeRecommendations(parsed);
+      logger.info('Agentic loop completed', {
+        userId,
+        iterations,
+        latencyMs: Date.now() - startedAt,
+        recommendationCount: recommendations.length,
+      });
       return { recommendations };
     }
 
@@ -334,10 +357,22 @@ Respond ONLY with the JSON — no markdown, no preamble.`;
 
       for (const toolUse of toolUseBlocks) {
         let result;
+        const toolStarted = Date.now();
         try {
           result = await executeTool(toolUse.name, toolUse.input, userId);
+          logger.info('Tool call succeeded', {
+            userId,
+            tool: toolUse.name,
+            latencyMs: Date.now() - toolStarted,
+          });
         } catch (err) {
           result = { error: err.message };
+          logger.warn('Tool call failed', {
+            userId,
+            tool: toolUse.name,
+            latencyMs: Date.now() - toolStarted,
+            error: err.message,
+          });
         }
 
         toolResults.push({
@@ -553,6 +588,7 @@ router.post('/', requireAuth, async (req, res) => {
   if (!query) return res.status(400).json({ error: 'query is required' });
 
   try {
+    req.log?.info('Recommendation request started', { userId: req.userId });
     // Save the query to DB
     const queryResult = await pool.query(
       'INSERT INTO queries (user_id, query_text) VALUES ($1, $2) RETURNING id',
@@ -574,7 +610,7 @@ router.post('/', requireAuth, async (req, res) => {
       }
       recommendations = result.recommendations;
     } catch (err) {
-      console.error('Agentic loop failed, using fallback:', err.message);
+      req.log?.warn('Agentic loop failed, using fallback', { userId: req.userId, reason: err.message });
       recommendations = await fallbackRecommendations(query);
     }
 
@@ -593,7 +629,11 @@ router.post('/', requireAuth, async (req, res) => {
 
     res.json({ queryId, results: recommendations });
   } catch (err) {
-    console.error('Recommendation error:', err);
+    reportError(err, {
+      requestId: req.requestId,
+      operation: 'recommendation_route',
+      userId: req.userId,
+    });
     res.status(500).json({ error: 'Failed to get recommendations' });
   }
 });

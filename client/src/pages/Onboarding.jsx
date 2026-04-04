@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getOnboarding, saveOnboarding } from '../api/client.js';
+import useAuthStore from '../store/auth.js';
 
 const GENRE_OPTIONS = [
   'Drama', 'Thriller', 'Sci-Fi', 'Comedy', 'Horror', 'Romance',
@@ -13,6 +14,7 @@ const MOOD_OPTIONS = [
 
 export default function Onboarding() {
   const navigate = useNavigate();
+  const setOnboardingStatus = useAuthStore((s) => s.setOnboardingStatus);
   const [favoriteGenres, setFavoriteGenres] = useState([]);
   const [moods, setMoods] = useState([]);
   const [favoriteMoviesInput, setFavoriteMoviesInput] = useState('');
@@ -48,6 +50,7 @@ export default function Onboarding() {
     setSaving(true);
     try {
       await saveOnboarding({ favoriteGenres, favoriteMovies, moods });
+      setOnboardingStatus('complete');
       navigate('/');
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to save onboarding profile');
@@ -125,10 +128,9 @@ export default function Onboarding() {
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <button type="button" className="btn-ghost text-sm" onClick={() => navigate('/')}>Skip for now</button>
+        <div className="flex items-center justify-end">
           <button type="submit" className="btn-primary" disabled={saving}>
-            {saving ? 'Saving...' : 'Save profile'}
+            {saving ? 'Saving...' : 'Continue'}
           </button>
         </div>
       </form>

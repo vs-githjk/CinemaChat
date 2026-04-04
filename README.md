@@ -74,11 +74,19 @@ npm run dev
 # Client → http://localhost:5173
 ```
 
+### 7. Run integration tests (server)
+
+```bash
+npm --prefix server run test:integration
+```
+
 ## Production Readiness Notes
 
 - **CORS**: Set `CLIENT_URL` to your deployed frontend origin. Multiple origins are supported as a comma-separated list.
 - **Frontend API base**: Set `VITE_API_URL` in production (for example `https://api.yourdomain.com`). Leave empty in local dev to use Vite proxy.
 - **Rate limiting**: API now includes in-memory request limits for global traffic, auth, and recommendations.
+- **Observability hooks**: Structured JSON logging is enabled; optional `SENTRY_DSN` hook points are wired.
+- **Caching**: Redis-ready cache abstraction with in-memory fallback is wired for recommendation/metadata paths.
 - **Health checks**:
   - `GET /api/health` for liveness.
   - `GET /api/ready` for readiness (includes DB connectivity check).
@@ -102,6 +110,8 @@ For provider-specific production setup (Render + Vercel), see [DEPLOY.md](/Users
 | `PORT` | Server port (default `3001`) |
 | `CLIENT_URL` | Allowed frontend origin(s) for CORS, comma-separated |
 | `REQUEST_BODY_LIMIT` | Max JSON body size for API requests (default `1mb`) |
+| `REDIS_URL` | Optional Redis connection URL (falls back to in-memory cache if absent/unavailable) |
+| `SENTRY_DSN` | Optional Sentry DSN for error monitoring hook points |
 | `VITE_API_URL` | Optional absolute API host for frontend in production |
 
 ## Features
