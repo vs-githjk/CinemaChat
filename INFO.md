@@ -32,7 +32,6 @@ It helps users:
 ## How Recommendations Are Generated
 
 The backend uses an agentic orchestration flow with these tools:
-- **Semantic retrieval**: OpenAI embeddings + Pinecone vector search.
 - **Semantic retrieval**: Pinecone Inference embeddings + Pinecone vector search.
 - **Filmography lookup**: TMDB person/credits retrieval.
 - **Movie enrichment**: TMDB details (poster, cast, trailer, metadata).

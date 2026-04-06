@@ -10,7 +10,7 @@ This guide deploys CinemaChat with:
 - Frontend: Vercel static site from `client/`
 - Backend: Render web service from `server/`
 - Database: Supabase Postgres
-- External providers: TMDB, Anthropic, OpenAI, Pinecone
+- External providers: TMDB, Anthropic, Pinecone
 
 ## 1. Create Production Secrets
 
@@ -154,7 +154,6 @@ If release issues appear:
 ## 9. Known Production Caveats
 
 - Current rate limiting is in-memory per instance. For multi-instance scaling, move rate limiting to Redis or an API gateway.
-- Recommendation quality depends on third-party API health and keys (TMDB, Anthropic, OpenAI, Pinecone).
 - Recommendation quality depends on third-party API health and keys (TMDB, Anthropic, Pinecone).
 
 ## 10. Optional Hardening Next
