@@ -2,7 +2,6 @@ import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import axios from 'axios';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { OpenAI } from 'openai';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import {
@@ -15,10 +14,10 @@ import { logActivity } from '../utils/activity.js';
 import { createCacheProvider } from '../cache/provider.js';
 import { logger } from '../observability/logger.js';
 import { reportError } from '../observability/monitoring.js';
+import { embedTexts } from '../utils/embeddings.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 
 const TMDB_BASE = 'https://api.themoviedb.org/3';
@@ -44,11 +43,9 @@ async function searchMoviesByVibe(query, topK = 10) {
   const cached = await cache.get(cacheKey);
   if (cached) return cached;
 
-  const embedResp = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: query,
-  });
-  const vector = embedResp.data[0].embedding;
+  const vectors = await embedTexts([query], 'query');
+  const vector = vectors[0];
+  if (!vector?.length) throw new Error('Could not generate query embedding');
   const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
   const results = await index.query({ vector, topK, includeMetadata: true });
   const matches = results.matches.map((m) => ({

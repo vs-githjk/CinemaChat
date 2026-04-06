@@ -3,13 +3,13 @@
 This guide deploys CinemaChat with:
 - Backend API on Render
 - Frontend on Vercel
-- PostgreSQL on Render (or any managed Postgres)
+- PostgreSQL on Supabase
 
 ## Architecture
 
 - Frontend: Vercel static site from `client/`
 - Backend: Render web service from `server/`
-- Database: managed Postgres
+- Database: Supabase Postgres
 - External providers: TMDB, Anthropic, OpenAI, Pinecone
 
 ## 1. Create Production Secrets
@@ -18,9 +18,9 @@ You need these values ready before deploying:
 
 - `TMDB_API_KEY`
 - `ANTHROPIC_API_KEY`
-- `OPENAI_API_KEY`
 - `PINECONE_API_KEY`
 - `PINECONE_INDEX_NAME`
+- `PINECONE_EMBED_MODEL` (optional, default `multilingual-e5-large`)
 - `DATABASE_URL`
 - `JWT_SECRET`
 
@@ -29,8 +29,8 @@ Recommended:
 
 ## 2. Database Setup
 
-1. Create a managed PostgreSQL instance.
-2. Copy its connection string to `DATABASE_URL`.
+1. Create a Supabase project and database.
+2. Copy the Supabase Postgres connection string to `DATABASE_URL`.
 3. Run schema migration against production DB:
 
 ```bash
@@ -64,9 +64,9 @@ npm run build:index
 - `JWT_SECRET=<your jwt secret>`
 - `TMDB_API_KEY=<...>`
 - `ANTHROPIC_API_KEY=<...>`
-- `OPENAI_API_KEY=<...>`
 - `PINECONE_API_KEY=<...>`
 - `PINECONE_INDEX_NAME=<...>`
+- `PINECONE_EMBED_MODEL=multilingual-e5-large` (optional)
 
 4. After deploy, verify:
 - `GET https://<render-api-domain>/api/health`
@@ -155,6 +155,7 @@ If release issues appear:
 
 - Current rate limiting is in-memory per instance. For multi-instance scaling, move rate limiting to Redis or an API gateway.
 - Recommendation quality depends on third-party API health and keys (TMDB, Anthropic, OpenAI, Pinecone).
+- Recommendation quality depends on third-party API health and keys (TMDB, Anthropic, Pinecone).
 
 ## 10. Optional Hardening Next
 

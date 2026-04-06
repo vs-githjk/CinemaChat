@@ -6,7 +6,6 @@
  */
 
 import { Pinecone } from '@pinecone-database/pinecone';
-import { OpenAI } from 'openai';
 import axios from 'axios';
 import dotenv from 'dotenv';
 
@@ -15,13 +14,13 @@ dotenv.config({ path: '../.env' });
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_KEY = process.env.TMDB_API_KEY;
 const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'cinemachat';
+const EMBED_MODEL = process.env.PINECONE_EMBED_MODEL || 'multilingual-e5-large';
 const BATCH_SIZE = 50;      // Pinecone upsert batch size
-const EMBED_BATCH = 20;     // OpenAI embedding batch size
+const EMBED_BATCH = 20;     // Pinecone inference batch size
 const TARGET_MOVIES = 1000;
 const PAGES = Math.ceil(TARGET_MOVIES / 20); // TMDB returns 20/page
 
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 function buildMovieText(movie) {
   const genres = movie.genres?.map((g) => g.name).join(', ') || '';
@@ -60,21 +59,21 @@ async function fetchMovieDetails(id) {
 }
 
 async function embedBatch(texts) {
-  const resp = await openai.embeddings.create({
-    model: 'text-embedding-3-small',
-    input: texts,
+  const response = await pinecone.inference.embed(EMBED_MODEL, texts, {
+    inputType: 'passage',
+    truncate: 'END',
   });
-  return resp.data.map((d) => d.embedding);
+  return response.data?.map((item) => item.values || []) || [];
 }
 
-async function ensureIndex() {
+async function ensureIndex(dimension) {
   const existing = await pinecone.listIndexes();
   const names = existing.indexes?.map((i) => i.name) || [];
   if (!names.includes(INDEX_NAME)) {
     console.log(`Creating Pinecone index "${INDEX_NAME}"...`);
     await pinecone.createIndex({
       name: INDEX_NAME,
-      dimension: 1536,   // text-embedding-3-small
+      dimension,
       metric: 'cosine',
       spec: { serverless: { cloud: 'aws', region: 'us-east-1' } },
     });
@@ -88,16 +87,20 @@ async function ensureIndex() {
     }
     console.log('Index ready.');
   } else {
-    console.log(`Index "${INDEX_NAME}" already exists.`);
+    const desc = await pinecone.describeIndex(INDEX_NAME);
+    const existingDimension = desc.dimension;
+    if (existingDimension !== dimension) {
+      throw new Error(
+        `Index "${INDEX_NAME}" dimension (${existingDimension}) does not match embedding model dimension (${dimension}). Recreate the index or use a matching model.`
+      );
+    }
+    console.log(`Index "${INDEX_NAME}" already exists with matching dimension ${dimension}.`);
   }
 }
 
 async function main() {
   console.log('=== CinemaChat Pinecone Index Builder ===');
   console.log(`Target: ~${TARGET_MOVIES} movies across ${PAGES} TMDB pages`);
-
-  await ensureIndex();
-  const index = pinecone.index(INDEX_NAME);
 
   let allMovies = [];
   for (let page = 1; page <= PAGES; page++) {
@@ -124,10 +127,17 @@ async function main() {
 
   // Embed in batches
   const vectors = [];
+  let index = null;
   for (let i = 0; i < records.length; i += EMBED_BATCH) {
     const batch = records.slice(i, i + EMBED_BATCH);
     const texts = batch.map((r) => r.text);
     const embeddings = await embedBatch(texts);
+    if (!index) {
+      const dimension = embeddings[0]?.length;
+      if (!dimension) throw new Error('Could not determine embedding dimension from Pinecone inference response');
+      await ensureIndex(dimension);
+      index = pinecone.index(INDEX_NAME);
+    }
     for (let j = 0; j < batch.length; j++) {
       const m = batch[j].movie;
       vectors.push({
@@ -147,6 +157,7 @@ async function main() {
     await new Promise((r) => setTimeout(r, 200));
   }
   console.log(`\nUpserting ${vectors.length} vectors to Pinecone...`);
+  if (!index) throw new Error('No index connection available for upsert');
 
   // Upsert in batches
   for (let i = 0; i < vectors.length; i += BATCH_SIZE) {
@@ -158,6 +169,7 @@ async function main() {
 
   console.log('\n\n✅ Index build complete!');
   console.log(`   Index: ${INDEX_NAME}`);
+  console.log(`   Embedding model: ${EMBED_MODEL}`);
   console.log(`   Vectors: ${vectors.length}`);
 }
 

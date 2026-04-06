@@ -37,7 +37,7 @@ Claude decides which tools to call (and how many times) until it has enough cont
 
 - Node.js 20+
 - PostgreSQL running locally
-- API keys: TMDB, Anthropic, OpenAI, Pinecone
+- API keys: TMDB, Anthropic, Pinecone
 
 ### 2. Environment
 
@@ -102,9 +102,9 @@ For provider-specific production setup (Render + Vercel), see [DEPLOY.md](/Users
 |----------|-------------|
 | `TMDB_API_KEY` | themoviedb.org API key (free) |
 | `ANTHROPIC_API_KEY` | Anthropic API key |
-| `OPENAI_API_KEY` | OpenAI key for `text-embedding-3-small` |
 | `PINECONE_API_KEY` | Pinecone API key |
 | `PINECONE_INDEX_NAME` | Name for your Pinecone index (e.g. `cinemachat`) |
+| `PINECONE_EMBED_MODEL` | Optional Pinecone embedding model (default `multilingual-e5-large`) |
 | `DATABASE_URL` | PostgreSQL connection string |
 | `JWT_SECRET` | Secret for signing JWTs |
 | `PORT` | Server port (default `3001`) |

@@ -33,6 +33,7 @@ It helps users:
 
 The backend uses an agentic orchestration flow with these tools:
 - **Semantic retrieval**: OpenAI embeddings + Pinecone vector search.
+- **Semantic retrieval**: Pinecone Inference embeddings + Pinecone vector search.
 - **Filmography lookup**: TMDB person/credits retrieval.
 - **Movie enrichment**: TMDB details (poster, cast, trailer, metadata).
 - **Social context**: friends' loved titles and search behavior from PostgreSQL.
@@ -44,7 +45,7 @@ If model output is malformed or unavailable, fallback recommendation paths are u
 - **Frontend**: React + Vite + Tailwind
 - **Backend**: Node.js + Express
 - **Database**: PostgreSQL
-- **AI/ML**: Anthropic (agent), OpenAI embeddings, Pinecone vectors
+- **AI/ML**: Anthropic (agent), Pinecone Inference embeddings, Pinecone vectors
 - **Metadata Source**: TMDB API
 
 ## Production Readiness Highlights

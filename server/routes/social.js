@@ -2,17 +2,16 @@ import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
 import axios from 'axios';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { OpenAI } from 'openai';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parsePositiveInt } from '../utils/validation.js';
 import { parseJsonFromModelText } from '../utils/aiResponse.js';
 import { createCacheProvider } from '../cache/provider.js';
 import { reportError } from '../observability/monitoring.js';
+import { embedTexts } from '../utils/embeddings.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const pinecone = new Pinecone({ apiKey: process.env.PINECONE_API_KEY });
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 const TMDB_KEY = process.env.TMDB_API_KEY;
@@ -229,11 +228,9 @@ router.post('/collaborative', requireAuth, async (req, res) => {
     if (combinedQuery) {
       try {
         const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
-        const embedResp = await openai.embeddings.create({
-          model: 'text-embedding-3-small',
-          input: combinedQuery.slice(0, 2000),
-        });
-        const vector = embedResp.data[0].embedding;
+        const vectors = await embedTexts([combinedQuery.slice(0, 2000)], 'query');
+        const vector = vectors[0];
+        if (!vector?.length) throw new Error('Could not generate collaborative query embedding');
         const results = await index.query({ vector, topK: 15, includeMetadata: true });
         semanticCandidates = results.matches.map((m) => parseInt(m.id));
       } catch (e) {
