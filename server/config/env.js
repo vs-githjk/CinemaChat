@@ -1,6 +1,6 @@
 import dotenv from 'dotenv';
 
-dotenv.config({ path: '../.env' });
+dotenv.config({ path: '../.env', override: true });
 
 const REQUIRED_ENV = [
   'DATABASE_URL',
