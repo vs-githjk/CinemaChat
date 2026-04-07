@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { getShowcaseMovies } from '../api/client.js';
 
+const DEFAULT_AUTH_BG = 'https://payload.cargocollective.com/1/11/367710/13568488/CINEMA-CLASSICS-POSTER_RUTGERS_800.jpg';
+
 const MARQUEE_TAGS = [
   'Neo-noir',
   'Slow Cinema',
@@ -44,7 +46,7 @@ export default function AuthCinemaPanel({
       .catch(() => {});
   }, []);
 
-  const backdropImage = customBackdrop || showcase.backdrop;
+  const backdropImage = customBackdrop || DEFAULT_AUTH_BG;
   const panelStyle = backdropImage
     ? {
       backgroundImage: `linear-gradient(150deg, rgba(6, 10, 18, 0.9), rgba(8, 13, 22, 0.82)), url(${backdropImage})`,
@@ -55,6 +57,19 @@ export default function AuthCinemaPanel({
 
   return (
     <section className="card p-8 md:p-10 flex flex-col justify-between min-h-[520px] relative overflow-hidden" style={panelStyle}>
+      {!customBackdrop && !DEFAULT_AUTH_BG && (
+        <div className="auth-collage">
+          {showcase.movies.slice(0, 4).map((movie, idx) => (
+            <img
+              key={`${movie.tmdbId || movie.title}-bg-${idx}`}
+              src={movie.poster}
+              alt=""
+              className={`auth-collage-item auth-collage-item-${idx + 1}`}
+              loading="lazy"
+            />
+          ))}
+        </div>
+      )}
       <div className="cinema-spotlight" />
 
       <div className="relative z-[1] space-y-5">
@@ -93,7 +108,7 @@ export default function AuthCinemaPanel({
                 ) : null}
               </div>
               <div className="p-2.5">
-                <p className="text-sm font-semibold text-white leading-tight">{tile.title}</p>
+                <p className="text-sm font-semibold text-white leading-snug min-h-[2.5rem]">{tile.title}</p>
                 <p className="text-[11px] text-gray-400 mt-0.5">{tile.year || ''}</p>
               </div>
             </article>

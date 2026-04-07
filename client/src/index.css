@@ -108,11 +108,68 @@
   }
 
   .poster-tile-art {
-    height: 86px;
+    aspect-ratio: 2 / 3;
+    height: auto;
     background: linear-gradient(130deg, rgba(255, 77, 79, 0.9), rgba(255, 194, 92, 0.8) 38%, rgba(77, 163, 255, 0.9));
     opacity: 0.9;
     animation: pulsePoster 5s ease-in-out infinite;
     overflow: hidden;
+  }
+
+  .poster-tile-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center top;
+    display: block;
+  }
+
+  .auth-collage {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.34;
+    z-index: 0;
+    overflow: hidden;
+    background:
+      linear-gradient(120deg, rgba(8, 12, 19, 0.6), rgba(8, 12, 19, 0.86)),
+      radial-gradient(800px 300px at 20% 20%, rgba(255, 77, 79, 0.2), transparent 60%),
+      radial-gradient(900px 350px at 80% 60%, rgba(77, 163, 255, 0.18), transparent 60%);
+  }
+
+  .auth-collage-item {
+    position: absolute;
+    width: 180px;
+    height: 270px;
+    border-radius: 0.9rem;
+    border: 1px solid rgba(120, 146, 188, 0.25);
+    object-fit: cover;
+    filter: saturate(1.25) contrast(1.05);
+    box-shadow: 0 14px 30px rgba(2, 7, 17, 0.55);
+  }
+
+  .auth-collage-item-1 {
+    left: -12px;
+    top: 40px;
+    transform: rotate(-10deg);
+  }
+
+  .auth-collage-item-2 {
+    left: 190px;
+    top: -30px;
+    transform: rotate(8deg);
+  }
+
+  .auth-collage-item-3 {
+    right: 130px;
+    bottom: -38px;
+    transform: rotate(-6deg);
+  }
+
+  .auth-collage-item-4 {
+    right: -22px;
+    top: 140px;
+    transform: rotate(9deg);
   }
 }
 
