@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { register } from '../api/client.js';
 import useAuthStore from '../store/auth.js';
+import AuthCinemaPanel from '../components/AuthCinemaPanel.jsx';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -32,26 +33,18 @@ export default function Register() {
   return (
     <div className="min-h-screen grid place-items-center px-4 py-10">
       <div className="w-full max-w-5xl grid lg:grid-cols-[1.08fr_0.92fr] gap-6">
-        <section className="card p-8 md:p-10 flex flex-col justify-between min-h-[420px]">
-          <div className="space-y-6">
-            <p className="inline-flex items-center gap-2 rounded-full border border-cinema-gold/40 px-3 py-1 text-xs font-semibold text-cinema-gold bg-cinema-gold/10">
-              Taste graph onboarding included
-            </p>
-            <h1 className="text-4xl md:text-5xl leading-tight font-bold">
-              Build your
-              <span className="text-cinema-accent"> movie identity </span>
-              from day one.
-            </h1>
-            <p className="text-gray-300 max-w-xl">
-              We use your favorite genres, moods, and films to personalize recommendations before your first search.
-            </p>
-          </div>
-          <div className="mt-10 rounded-xl border border-cinema-border/70 bg-cinema-bg/45 px-4 py-4">
-            <p className="text-sm text-gray-300">
-              Your profile powers For You rails, collaborative friend picks, and social relevance in every recommendation.
-            </p>
-          </div>
-        </section>
+        <AuthCinemaPanel
+          badge="Create your cinema identity"
+          title={(
+            <>
+              Build a
+              <span className="text-cinema-accent"> movie profile </span>
+              that actually knows your taste.
+            </>
+          )}
+          description="Start with your favorite genres and films, then let CinemaChat evolve your recommendations as your taste shifts."
+          footer="From arthouse to crowd-pleasers, your home feed adapts after every search, save, and reaction."
+        />
 
         <section className="card p-7 sm:p-8">
           <h2 className="text-2xl font-semibold">Create account</h2>
