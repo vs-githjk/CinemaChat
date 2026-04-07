@@ -51,7 +51,15 @@ export default function AuthCinemaPanel({
     const movies = showcase.movies || [];
     const pages = [];
     for (let i = 0; i < movies.length; i += 4) {
-      pages.push(movies.slice(i, i + 4));
+      const chunk = movies.slice(i, i + 4);
+      if (chunk.length > 0 && chunk.length < 4 && movies.length >= 4) {
+        let fillIdx = 0;
+        while (chunk.length < 4) {
+          chunk.push(movies[fillIdx % movies.length]);
+          fillIdx += 1;
+        }
+      }
+      pages.push(chunk);
     }
     return pages.length > 0 ? pages : [FALLBACK_POSTERS.slice(0, 4)];
   }, [showcase.movies]);
