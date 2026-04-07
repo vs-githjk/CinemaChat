@@ -25,15 +25,14 @@ export default function MovieCard({
   };
 
   return (
-    <div className="card overflow-hidden transition-all duration-200 hover:border-gray-600">
+    <div className="card overflow-hidden transition-all duration-200 hover:border-cinema-electric-blue/70 hover:shadow-[0_14px_30px_rgba(6,12,30,0.45)]">
       <div className="flex gap-4 p-4">
-        {/* Poster */}
         <div className="flex-shrink-0">
           {movie.poster ? (
             <img
               src={movie.poster}
               alt={movie.title}
-              className="w-16 h-24 object-cover rounded-md"
+              className="w-16 h-24 object-cover rounded-md border border-cinema-border/60"
               loading="lazy"
             />
           ) : (
@@ -43,20 +42,19 @@ export default function MovieCard({
           )}
         </div>
 
-        {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div>
               <h3 className="font-semibold text-base leading-tight">{movie.title}</h3>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
-                {movie.year && <span className="text-xs text-gray-500">{movie.year}</span>}
+                {movie.year && <span className="text-xs text-gray-400">{movie.year}</span>}
                 {movie.rating && (
                   <span className="text-xs text-cinema-gold font-medium">★ {movie.rating}</span>
                 )}
                 {movie.genres?.map((g) => (
                   <span
                     key={g}
-                    className="text-xs bg-cinema-border text-gray-400 px-2 py-0.5 rounded-full"
+                    className="text-xs bg-cinema-bg/70 border border-cinema-border/70 text-gray-300 px-2 py-0.5 rounded-full"
                   >
                     {g}
                   </span>
@@ -65,10 +63,8 @@ export default function MovieCard({
             </div>
           </div>
 
-          {/* Claude's explanation */}
-          <p className="text-sm text-gray-300 mt-2 leading-relaxed">{movie.explanation}</p>
+          <p className="text-sm text-gray-200 mt-2 leading-relaxed">{movie.explanation}</p>
 
-          {/* Actions */}
           <div className="flex items-center justify-between mt-3">
             <div className="flex items-center gap-2">
               <ReactionButtons reaction={reaction} onReaction={handleReaction} />
@@ -77,8 +73,8 @@ export default function MovieCard({
                   onClick={() => onToggleWatchlist(movie.tmdbId)}
                   className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                     watchlisted
-                      ? 'border-cinema-accent text-cinema-accent'
-                      : 'border-cinema-border text-gray-500 hover:text-gray-300'
+                      ? 'border-cinema-accent text-cinema-accent bg-cinema-accent/10'
+                      : 'border-cinema-border text-gray-400 hover:text-gray-200'
                   }`}
                 >
                   {watchlisted ? 'Saved' : '+ Watchlist'}
@@ -87,7 +83,7 @@ export default function MovieCard({
             </div>
             <button
               onClick={() => setExpanded(!expanded)}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-xs text-gray-400 hover:text-gray-200 transition-colors"
             >
               {expanded ? 'Less ▲' : 'More ▼'}
             </button>
@@ -95,9 +91,8 @@ export default function MovieCard({
         </div>
       </div>
 
-      {/* Expanded */}
       {expanded && (
-        <div className="border-t border-cinema-border px-4 py-3 space-y-3">
+        <div className="border-t border-cinema-border/80 px-4 py-3 space-y-3 bg-cinema-bg/35">
           {movie.overview && (
             <div>
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Synopsis</p>

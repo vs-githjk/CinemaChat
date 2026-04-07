@@ -63,20 +63,21 @@ export default function ForYou() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto w-full py-6 space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">For You</h1>
-          <p className="text-sm text-gray-400 mt-1">
+    <div className="max-w-6xl mx-auto w-full py-2 sm:py-4 space-y-7">
+      <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+        <div className="max-w-3xl">
+          <p className="text-xs uppercase tracking-[0.18em] text-cinema-electric-blue font-semibold">For You</p>
+          <h1 className="text-3xl sm:text-4xl font-bold mt-2">Tonight&apos;s Curated Stack</h1>
+          <p className="text-sm text-gray-300 mt-2">
             Agentic movie curation based on your taste, behavior, and social graph.
           </p>
           {generatedAt && (
-            <p className="text-xs text-gray-600 mt-2">
+            <p className="text-xs text-gray-500 mt-3">
               Updated {new Date(generatedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
             </p>
           )}
         </div>
-        <button onClick={() => void loadFeed()} className="btn-ghost text-sm" disabled={loading}>
+        <button onClick={() => void loadFeed()} className="btn-ghost text-sm self-start sm:self-auto" disabled={loading}>
           {loading ? 'Refreshing...' : 'Refresh feed'}
         </button>
       </div>
@@ -109,8 +110,8 @@ export default function ForYou() {
       {rails.map((rail) => (
         <section key={rail.id} className="space-y-3">
           <div>
-            <h2 className="text-lg font-semibold">{rail.title}</h2>
-            {rail.subtitle && <p className="text-sm text-gray-500">{rail.subtitle}</p>}
+            <h2 className="text-xl font-semibold">{rail.title}</h2>
+            {rail.subtitle && <p className="text-sm text-gray-400">{rail.subtitle}</p>}
           </div>
 
           <div className="space-y-3">

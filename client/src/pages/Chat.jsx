@@ -66,44 +66,39 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-4xl mx-auto w-full">
-      {/* Header */}
-      <div className="flex items-center justify-between py-4 px-2 border-b border-cinema-border flex-shrink-0">
+    <div className="flex flex-col h-full max-w-5xl mx-auto w-full card overflow-hidden">
+      <div className="flex items-center justify-between py-4 px-4 sm:px-5 border-b border-cinema-border/80 flex-shrink-0">
         <div>
-          <h2 className="text-lg font-semibold">Movie Discovery</h2>
-          <p className="text-sm text-gray-500">Ask anything — conversational search powered by AI</p>
+          <h2 className="text-lg sm:text-xl font-semibold">Discover</h2>
+          <p className="text-sm text-gray-400">Describe a mood, era, director, or vibe and let the agent find it.</p>
         </div>
         <button
           onClick={() => setShowCollaborative(!showCollaborative)}
           className="btn-ghost text-sm flex items-center gap-2"
         >
-          <span>👥</span>
           <span>Watch with Friend</span>
         </button>
       </div>
 
-      {/* Collaborative panel */}
       {showCollaborative && (
-        <div className="border-b border-cinema-border px-2 py-4">
+        <div className="border-b border-cinema-border/80 px-4 sm:px-5 py-4">
           <CollaborativeQuery />
         </div>
       )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto py-6 px-2 space-y-6">
+      <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-5 space-y-6">
         {messages.length === 0 && !loading && (
-          <div className="text-center py-12">
-            <div className="text-5xl mb-4">🎬</div>
-            <h3 className="text-xl font-semibold mb-2">What are you in the mood for?</h3>
-            <p className="text-gray-500 mb-8 text-sm">
+          <div className="text-center py-10">
+            <h3 className="text-2xl font-semibold mb-2">What are you in the mood for?</h3>
+            <p className="text-gray-400 mb-8 text-sm">
               Describe a vibe, name a director, or ask for something specific.
             </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl mx-auto">
               {SUGGESTIONS.map((s) => (
                 <button
                   key={s}
                   onClick={() => sendQuery(s)}
-                  className="text-left px-4 py-3 rounded-lg bg-cinema-card border border-cinema-border hover:border-cinema-accent text-sm text-gray-300 hover:text-white transition-colors"
+                  className="text-left px-4 py-3 rounded-xl border border-cinema-border/70 bg-cinema-bg/35 hover:border-cinema-electric-blue/70 text-sm text-gray-300 hover:text-white transition-all"
                 >
                   "{s}"
                 </button>
@@ -116,7 +111,7 @@ export default function Chat() {
           <div key={i}>
             {msg.type === 'user' && (
               <div className="flex justify-end">
-                <div className="bg-cinema-accent/20 border border-cinema-accent/30 rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl">
+                <div className="bg-cinema-accent/15 border border-cinema-accent/40 rounded-2xl rounded-tr-sm px-4 py-3 max-w-xl shadow-[0_10px_22px_rgba(255,77,79,0.22)]">
                   <p className="text-sm">{msg.text}</p>
                 </div>
               </div>
@@ -124,8 +119,8 @@ export default function Chat() {
 
             {msg.type === 'assistant' && (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                  <span className="text-cinema-accent">●</span>
+                <div className="flex items-center gap-2 text-sm text-gray-400">
+                  <span className="text-cinema-mint-glow">●</span>
                   <span>Found {msg.results.length} recommendations</span>
                 </div>
                 <div className="space-y-3">
@@ -150,7 +145,7 @@ export default function Chat() {
         ))}
 
         {loading && (
-          <div className="flex items-center gap-3 text-gray-400 text-sm">
+          <div className="flex items-center gap-3 text-gray-300 text-sm">
             <div className="flex gap-1">
               <span className="w-2 h-2 bg-cinema-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
               <span className="w-2 h-2 bg-cinema-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
@@ -163,8 +158,7 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      {/* Input */}
-      <div className="border-t border-cinema-border py-4 px-2 flex-shrink-0">
+      <div className="border-t border-cinema-border/80 py-4 px-4 sm:px-5 flex-shrink-0">
         <form
           onSubmit={(e) => { e.preventDefault(); sendQuery(input); }}
           className="flex gap-3"
@@ -177,12 +171,12 @@ export default function Chat() {
             onChange={(e) => setInput(e.target.value)}
             disabled={loading}
           />
-          <button type="submit" className="btn-primary px-6" disabled={loading || !input.trim()}>
+          <button type="submit" className="btn-primary px-6 min-w-[72px]" disabled={loading || !input.trim()}>
             {loading ? '...' : '→'}
           </button>
         </form>
         {messages.length > 0 && (
-          <p className="text-xs text-gray-600 mt-2 px-1">
+          <p className="text-xs text-gray-500 mt-2 px-1">
             Tip: Refine your search — "make it darker", "only shows", "nothing before 2000"
           </p>
         )}

@@ -5,17 +5,20 @@ export default {
     extend: {
       colors: {
         cinema: {
-          bg: '#0a0a0f',
-          card: '#13131a',
-          border: '#1e1e2e',
-          accent: '#e50914',
-          'accent-hover': '#c40811',
-          gold: '#f5c518',
-          muted: '#6b7280',
+          bg: '#08090d',
+          card: '#121722',
+          border: '#263147',
+          accent: '#ff4d4f',
+          'accent-hover': '#ff3236',
+          gold: '#f6c25c',
+          muted: '#8d96ad',
+          'electric-blue': '#4da3ff',
+          'mint-glow': '#58f3d6',
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
+        sans: ['Manrope', 'system-ui', 'sans-serif'],
+        display: ['Space Grotesk', 'Manrope', 'system-ui', 'sans-serif'],
       },
     },
   },

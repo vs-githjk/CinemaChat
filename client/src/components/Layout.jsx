@@ -12,20 +12,22 @@ export default function Layout() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Top nav */}
-      <header className="border-b border-cinema-border bg-cinema-card/50 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <NavLink to="/" className="text-xl font-bold">
-            <span className="text-cinema-accent">Cinema</span>Chat
+      <header className="sticky top-0 z-20 backdrop-blur border-b border-cinema-border/60 bg-cinema-bg/75">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <NavLink to="/" className="text-2xl leading-none font-display font-bold">
+            <span className="text-cinema-accent">Cinema</span>
+            <span className="text-white">Chat</span>
           </NavLink>
 
-          <nav className="flex items-center gap-1">
+          <nav className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
             <NavLink
               to="/"
               end
               className={({ isActive }) =>
-                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive ? 'text-white bg-cinema-border' : 'text-gray-400 hover:text-white'
+                `px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'text-white border border-cinema-accent/70 bg-cinema-accent/15'
+                    : 'text-gray-300 border border-cinema-border/60 hover:text-white hover:border-cinema-electric-blue/70'
                 }`
               }
             >
@@ -34,8 +36,10 @@ export default function Layout() {
             <NavLink
               to="/discover"
               className={({ isActive }) =>
-                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive ? 'text-white bg-cinema-border' : 'text-gray-400 hover:text-white'
+                `px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'text-white border border-cinema-accent/70 bg-cinema-accent/15'
+                    : 'text-gray-300 border border-cinema-border/60 hover:text-white hover:border-cinema-electric-blue/70'
                 }`
               }
             >
@@ -44,8 +48,10 @@ export default function Layout() {
             <NavLink
               to="/feed"
               className={({ isActive }) =>
-                `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive ? 'text-white bg-cinema-border' : 'text-gray-400 hover:text-white'
+                `px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'text-white border border-cinema-accent/70 bg-cinema-accent/15'
+                    : 'text-gray-300 border border-cinema-border/60 hover:text-white hover:border-cinema-electric-blue/70'
                 }`
               }
             >
@@ -55,8 +61,10 @@ export default function Layout() {
               <NavLink
                 to={`/profile/${user.id}`}
                 className={({ isActive }) =>
-                  `px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    isActive ? 'text-white bg-cinema-border' : 'text-gray-400 hover:text-white'
+                  `px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                    isActive
+                      ? 'text-white border border-cinema-accent/70 bg-cinema-accent/15'
+                      : 'text-gray-300 border border-cinema-border/60 hover:text-white hover:border-cinema-electric-blue/70'
                   }`
                 }
               >
@@ -65,7 +73,7 @@ export default function Layout() {
             )}
             <button
               onClick={handleLogout}
-              className="ml-2 px-3 py-1.5 rounded-md text-sm text-gray-500 hover:text-white transition-colors"
+              className="px-3 py-1.5 rounded-full text-sm text-gray-400 hover:text-white border border-cinema-border/60 hover:border-cinema-electric-blue/70 whitespace-nowrap transition-all"
             >
               Sign out
             </button>
@@ -73,8 +81,7 @@ export default function Layout() {
         </div>
       </header>
 
-      {/* Page content */}
-      <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-2 flex flex-col">
+      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col">
         <Outlet />
       </main>
     </div>
