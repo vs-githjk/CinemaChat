@@ -59,5 +59,6 @@ export const getUserProfile = (id) => api.get(`/users/${id}/profile`);
 export const getUserTaste = (id) => api.get(`/users/${id}/taste`);
 export const getOnboarding = () => api.get('/users/onboarding');
 export const saveOnboarding = (data) => api.post('/users/onboarding', data);
+export const getShowcaseMovies = () => api.get('/users/showcase');
 
 export default api;

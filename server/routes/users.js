@@ -1,11 +1,15 @@
 import { Router } from 'express';
 import Anthropic from '@anthropic-ai/sdk';
+import axios from 'axios';
 import pool from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { parsePositiveInt, sanitizeQuery } from '../utils/validation.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+const TMDB_BASE = 'https://api.themoviedb.org/3';
+const TMDB_IMG = 'https://image.tmdb.org/t/p';
+let showcaseCache = { expiresAt: 0, payload: null };
 
 function sanitizeStringArray(value, { maxItems = 8, maxLength = 40 } = {}) {
   if (!Array.isArray(value)) return [];
@@ -15,6 +19,51 @@ function sanitizeStringArray(value, { maxItems = 8, maxLength = 40 } = {}) {
     .map((item) => item.slice(0, maxLength));
   return [...new Set(cleaned)].slice(0, maxItems);
 }
+
+router.get('/showcase', async (_req, res) => {
+  try {
+    if (showcaseCache.payload && Date.now() < showcaseCache.expiresAt) {
+      return res.json(showcaseCache.payload);
+    }
+
+    const popularRes = await axios.get(`${TMDB_BASE}/movie/popular`, {
+      params: {
+        api_key: process.env.TMDB_API_KEY,
+        page: 1,
+        language: 'en-US',
+      },
+      timeout: 10_000,
+    });
+
+    const movies = (popularRes.data?.results || [])
+      .filter((m) => m?.poster_path && m?.backdrop_path && m?.title)
+      .slice(0, 6)
+      .map((m) => ({
+        tmdbId: m.id,
+        title: m.title,
+        year: m.release_date ? String(m.release_date).slice(0, 4) : '',
+        genre: '',
+        poster: `${TMDB_IMG}/w342${m.poster_path}`,
+        backdrop: `${TMDB_IMG}/w780${m.backdrop_path}`,
+      }));
+
+    const payload = {
+      updatedAt: new Date().toISOString(),
+      backdrop: movies[0]?.backdrop || null,
+      movies,
+    };
+
+    showcaseCache = {
+      payload,
+      expiresAt: Date.now() + 60 * 60 * 1000,
+    };
+
+    return res.json(payload);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: 'Could not load showcase movies' });
+  }
+});
 
 router.get('/onboarding', requireAuth, async (req, res) => {
   try {
