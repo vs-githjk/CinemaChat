@@ -4,6 +4,8 @@ import { register } from '../api/client.js';
 import useAuthStore from '../store/auth.js';
 import AuthCinemaPanel from '../components/AuthCinemaPanel.jsx';
 
+const AUTH_BG = 'https://payload.cargocollective.com/1/11/367710/13568488/CINEMA-CLASSICS-POSTER_RUTGERS_800.jpg';
+
 export default function Register() {
   const navigate = useNavigate();
   const setAuth = useAuthStore((s) => s.setAuth);
@@ -31,7 +33,10 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen grid place-items-center px-4 py-10">
+    <div
+      className="auth-stage"
+      style={{ '--auth-bg-image': `url(${import.meta.env.VITE_AUTH_BG_IMAGE?.trim() || AUTH_BG})` }}
+    >
       <div className="w-full max-w-5xl grid lg:grid-cols-[1.08fr_0.92fr] gap-6">
         <AuthCinemaPanel
           badge="Create your cinema identity"
@@ -46,7 +51,7 @@ export default function Register() {
           footer="From arthouse to crowd-pleasers, your home feed adapts after every search, save, and reaction."
         />
 
-        <section className="card p-7 sm:p-8">
+        <section className="card auth-form-panel p-7 sm:p-8">
           <h2 className="text-2xl font-semibold">Create account</h2>
           <p className="text-sm text-gray-400 mt-1">Start curating your cinematic taste profile.</p>
 

@@ -1,8 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getShowcaseMovies } from '../api/client.js';
 
-const DEFAULT_AUTH_BG = 'https://payload.cargocollective.com/1/11/367710/13568488/CINEMA-CLASSICS-POSTER_RUTGERS_800.jpg';
-
 const MARQUEE_TAGS = [
   'Neo-noir',
   'Slow Cinema',
@@ -46,7 +44,7 @@ export default function AuthCinemaPanel({
       .catch(() => {});
   }, []);
 
-  const backdropImage = customBackdrop || DEFAULT_AUTH_BG;
+  const backdropImage = customBackdrop || null;
   const panelStyle = backdropImage
     ? {
       backgroundImage: `linear-gradient(150deg, rgba(6, 10, 18, 0.9), rgba(8, 13, 22, 0.82)), url(${backdropImage})`,
@@ -56,10 +54,10 @@ export default function AuthCinemaPanel({
     : undefined;
 
   return (
-    <section className="card p-8 md:p-10 flex flex-col justify-between min-h-[520px] relative overflow-hidden" style={panelStyle}>
-      {!customBackdrop && !DEFAULT_AUTH_BG && (
+    <section className="card p-7 md:p-8 flex flex-col justify-between min-h-[480px] relative overflow-hidden" style={panelStyle}>
+      {!customBackdrop && (
         <div className="auth-collage">
-          {showcase.movies.slice(0, 4).map((movie, idx) => (
+          {showcase.movies.slice(0, 3).map((movie, idx) => (
             <img
               key={`${movie.tmdbId || movie.title}-bg-${idx}`}
               src={movie.poster}
@@ -94,8 +92,8 @@ export default function AuthCinemaPanel({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {showcase.movies.map((tile, index) => (
+        <div className="grid grid-cols-2 gap-3">
+          {showcase.movies.slice(0, 4).map((tile, index) => (
             <article key={`${tile.title}-${index}`} className="poster-tile">
               <div className="poster-tile-art" style={{ animationDelay: `${index * 120}ms` }}>
                 {tile.poster ? (
