@@ -54,11 +54,12 @@
     position: absolute;
     inset: 0;
     background-image:
-      linear-gradient(120deg, rgba(6, 10, 18, 0.86), rgba(7, 11, 19, 0.76)),
+      linear-gradient(120deg, rgba(6, 10, 18, 0.62), rgba(7, 11, 19, 0.48)),
       var(--auth-bg-image);
     background-size: cover;
     background-position: center;
-    opacity: 0.55;
+    opacity: 0.82;
+    filter: saturate(1.15) brightness(1.08);
     z-index: 0;
   }
 
