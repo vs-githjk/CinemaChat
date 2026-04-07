@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { getShowcaseMovies } from '../api/client.js';
 
 const MARQUEE_TAGS = [
@@ -19,6 +19,8 @@ const FALLBACK_POSTERS = [
   { title: 'Parasite', year: '2019', poster: 'https://image.tmdb.org/t/p/w342/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg' },
   { title: 'Whiplash', year: '2014', poster: 'https://image.tmdb.org/t/p/w342/7fn624j5lj3xTme2SgiLCeuedmO.jpg' },
   { title: 'Spirited Away', year: '2001', poster: 'https://image.tmdb.org/t/p/w342/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg' },
+  { title: 'The Matrix', year: '1999', poster: 'https://image.tmdb.org/t/p/w342/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg' },
+  { title: 'Arrival', year: '2016', poster: 'https://image.tmdb.org/t/p/w342/x2FJsf1ElAgr63Y3PNPtJrcmpoe.jpg' },
 ];
 
 export default function AuthCinemaPanel({
@@ -29,6 +31,7 @@ export default function AuthCinemaPanel({
 }) {
   const [showcase, setShowcase] = useState({ movies: FALLBACK_POSTERS, backdrop: null });
   const customBackdrop = import.meta.env.VITE_AUTH_BG_IMAGE?.trim();
+  const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     getShowcaseMovies()
@@ -44,6 +47,27 @@ export default function AuthCinemaPanel({
       .catch(() => {});
   }, []);
 
+  const posterPages = useMemo(() => {
+    const movies = showcase.movies || [];
+    const pages = [];
+    for (let i = 0; i < movies.length; i += 4) {
+      pages.push(movies.slice(i, i + 4));
+    }
+    return pages.length > 0 ? pages : [FALLBACK_POSTERS.slice(0, 4)];
+  }, [showcase.movies]);
+
+  useEffect(() => {
+    setPageIndex(0);
+  }, [posterPages.length]);
+
+  useEffect(() => {
+    if (posterPages.length <= 1) return undefined;
+    const timer = setInterval(() => {
+      setPageIndex((prev) => (prev + 1) % posterPages.length);
+    }, 3500);
+    return () => clearInterval(timer);
+  }, [posterPages.length]);
+
   const backdropImage = customBackdrop || null;
   const panelStyle = backdropImage
     ? {
@@ -54,20 +78,7 @@ export default function AuthCinemaPanel({
     : undefined;
 
   return (
-    <section className="card p-7 md:p-8 flex flex-col justify-between min-h-[480px] relative overflow-hidden" style={panelStyle}>
-      {!customBackdrop && (
-        <div className="auth-collage">
-          {showcase.movies.slice(0, 3).map((movie, idx) => (
-            <img
-              key={`${movie.tmdbId || movie.title}-bg-${idx}`}
-              src={movie.poster}
-              alt=""
-              className={`auth-collage-item auth-collage-item-${idx + 1}`}
-              loading="lazy"
-            />
-          ))}
-        </div>
-      )}
+    <section className="card p-6 md:p-7 flex flex-col justify-between min-h-[420px] relative overflow-hidden" style={panelStyle}>
       <div className="cinema-spotlight" />
 
       <div className="relative z-[1] space-y-5">
@@ -78,7 +89,7 @@ export default function AuthCinemaPanel({
         <p className="text-gray-300 max-w-xl">{description}</p>
       </div>
 
-      <div className="relative z-[1] mt-8 space-y-4">
+      <div className="relative z-[1] mt-6 space-y-3">
         <div className="overflow-hidden rounded-lg border border-cinema-border/70 bg-cinema-bg/45 py-2">
           <div className="marquee-track px-2">
             {[...MARQUEE_TAGS, ...MARQUEE_TAGS].map((tag, i) => (
@@ -92,8 +103,8 @@ export default function AuthCinemaPanel({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          {showcase.movies.slice(0, 4).map((tile, index) => (
+        <div className="grid grid-cols-4 gap-2.5">
+          {(posterPages[pageIndex] || []).map((tile, index) => (
             <article key={`${tile.title}-${index}`} className="poster-tile">
               <div className="poster-tile-art" style={{ animationDelay: `${index * 120}ms` }}>
                 {tile.poster ? (
@@ -106,12 +117,24 @@ export default function AuthCinemaPanel({
                 ) : null}
               </div>
               <div className="p-2.5">
-                <p className="text-sm font-semibold text-white leading-snug min-h-[2.5rem]">{tile.title}</p>
+                <p className="text-sm font-semibold text-white leading-snug line-clamp-2 min-h-[2.5rem]">{tile.title}</p>
                 <p className="text-[11px] text-gray-400 mt-0.5">{tile.year || ''}</p>
               </div>
             </article>
           ))}
         </div>
+        {posterPages.length > 1 && (
+          <div className="flex items-center justify-center gap-1.5 pt-1">
+            {posterPages.map((_, idx) => (
+              <span
+                key={`page-dot-${idx}`}
+                className={`h-1.5 rounded-full transition-all ${
+                  idx === pageIndex ? 'w-5 bg-cinema-electric-blue' : 'w-1.5 bg-cinema-border'
+                }`}
+              />
+            ))}
+          </div>
+        )}
 
         <p className="text-sm text-gray-300">{footer}</p>
       </div>

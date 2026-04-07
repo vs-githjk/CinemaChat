@@ -37,7 +37,7 @@ router.get('/showcase', async (_req, res) => {
 
     const movies = (popularRes.data?.results || [])
       .filter((m) => m?.poster_path && m?.backdrop_path && m?.title)
-      .slice(0, 6)
+      .slice(0, 16)
       .map((m) => ({
         tmdbId: m.id,
         title: m.title,
