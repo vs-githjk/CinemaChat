@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { getRecommendations, getReactions } from '../api/client.js';
 import MovieCard from '../components/MovieCard.jsx';
 import CollaborativeQuery from '../components/CollaborativeQuery.jsx';
+import Waves from '../components/Waves.jsx';
 
 const SUGGESTIONS = [
   'Something like Inception but more emotional',
@@ -66,8 +67,26 @@ export default function Chat() {
   };
 
   return (
-    <div className="flex flex-col h-full max-w-5xl mx-auto w-full card overflow-hidden">
-      <div className="flex items-center justify-between py-4 px-4 sm:px-5 border-b border-cinema-border/80 flex-shrink-0">
+    <div className="discover-shell flex flex-col h-full max-w-5xl mx-auto w-full card overflow-hidden">
+      <div className="discover-shell-background" aria-hidden="true">
+        <Waves
+          lineColor="rgba(77, 163, 255, 0.18)"
+          glowColor="rgba(77, 163, 255, 0.16)"
+          backgroundColor="transparent"
+          waveSpeedX={0.009}
+          waveSpeedY={0.006}
+          waveAmpX={26}
+          waveAmpY={12}
+          friction={0.92}
+          tension={0.0075}
+          maxCursorMove={80}
+          xGap={14}
+          yGap={34}
+          className="discover-shell-waves"
+        />
+      </div>
+
+      <div className="discover-shell-layer flex items-center justify-between py-4 px-4 sm:px-5 border-b border-cinema-border/80 flex-shrink-0">
         <div>
           <h2 className="text-lg sm:text-xl font-semibold">Discover</h2>
           <p className="text-sm text-gray-400">Describe a mood, era, director, or vibe and let the agent find it.</p>
@@ -81,12 +100,12 @@ export default function Chat() {
       </div>
 
       {showCollaborative && (
-        <div className="border-b border-cinema-border/80 px-4 sm:px-5 py-4">
+        <div className="discover-shell-layer border-b border-cinema-border/80 px-4 sm:px-5 py-4">
           <CollaborativeQuery />
         </div>
       )}
 
-      <div className="flex-1 overflow-y-auto py-6 px-4 sm:px-5 space-y-6">
+      <div className="discover-shell-layer flex-1 overflow-y-auto py-6 px-4 sm:px-5 space-y-6">
         {messages.length === 0 && !loading && (
           <div className="text-center py-10">
             <h3 className="text-2xl font-semibold mb-2">What are you in the mood for?</h3>
@@ -158,7 +177,7 @@ export default function Chat() {
         <div ref={bottomRef} />
       </div>
 
-      <div className="border-t border-cinema-border/80 py-4 px-4 sm:px-5 flex-shrink-0">
+      <div className="discover-shell-layer border-t border-cinema-border/80 py-4 px-4 sm:px-5 flex-shrink-0">
         <form
           onSubmit={(e) => { e.preventDefault(); sendQuery(input); }}
           className="flex gap-3"

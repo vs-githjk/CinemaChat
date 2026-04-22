@@ -17,29 +17,45 @@ export default function Profile() {
   const [isFriend, setIsFriend] = useState(false);
   const [collabError, setCollabError] = useState('');
   const [loadError, setLoadError] = useState('');
+  const [tasteError, setTasteError] = useState('');
 
   useEffect(() => {
     let cancelled = false;
 
     setLoading(true);
     setLoadError('');
+    setTasteError('');
     setProfile(null);
     setTaste(null);
     setCollaborative(null);
     setIsFriend(false);
     setCollabError('');
 
-    Promise.all([
+    Promise.allSettled([
       getUserProfile(id),
       getUserTaste(id),
       isOwnProfile ? Promise.resolve({ data: [] }) : getFriends(),
     ])
-      .then(([profileResponse, tasteResponse, friendsResponse]) => {
+      .then(([profileResult, tasteResult, friendsResult]) => {
         if (cancelled) return;
-        setProfile(profileResponse.data);
-        setTaste(tasteResponse.data);
+
+        if (profileResult.status !== 'fulfilled') {
+          throw profileResult.reason;
+        }
+
+        setProfile(profileResult.value.data);
+
+        if (tasteResult.status === 'fulfilled') {
+          setTaste(tasteResult.value.data);
+        } else {
+          setTasteError('Taste profile is temporarily unavailable.');
+        }
+
         if (!isOwnProfile) {
-          const friend = friendsResponse.data.find((f) => f.id === parseInt(id, 10) && f.status === 'accepted');
+          if (friendsResult.status !== 'fulfilled') {
+            throw friendsResult.reason;
+          }
+          const friend = friendsResult.value.data.find((f) => f.id === parseInt(id, 10) && f.status === 'accepted');
           setIsFriend(!!friend);
         }
       })
@@ -128,6 +144,12 @@ export default function Profile() {
         <div className="card p-5">
           <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wider mb-3">Taste Profile</h2>
           <p className="text-gray-300 text-sm leading-relaxed italic">"{taste.tasteFingerprint}"</p>
+        </div>
+      )}
+
+      {tasteError && (
+        <div className="card p-4 text-sm text-gray-400">
+          {tasteError}
         </div>
       )}
 

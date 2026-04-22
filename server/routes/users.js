@@ -209,22 +209,29 @@ router.get('/:id/taste', requireAuth, async (req, res) => {
       return res.json({ tasteFingerprint: 'Not enough activity to generate a taste profile yet.' });
     }
 
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 300,
-      messages: [
-        {
-          role: 'user',
-          content: `Based on these recent movie/TV search queries, write a 2-3 sentence "taste fingerprint" that captures this person's viewing preferences — tone, genres, themes, moods they gravitate toward. Be specific and insightful.
+    let tasteFingerprint = 'Your taste profile is temporarily unavailable. Keep exploring and it will be regenerated soon.';
+
+    try {
+      const msg = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 300,
+        messages: [
+          {
+            role: 'user',
+            content: `Based on these recent movie/TV search queries, write a 2-3 sentence "taste fingerprint" that captures this person's viewing preferences — tone, genres, themes, moods they gravitate toward. Be specific and insightful.
 
 Queries: ${queries.map((q) => `"${q}"`).join(', ')}
 
 Write only the fingerprint text, no labels or headers.`,
-        },
-      ],
-    });
+          },
+        ],
+      });
 
-    const tasteFingerprint = msg.content[0].text.trim();
+      const textBlock = msg.content.find((block) => block.type === 'text');
+      tasteFingerprint = textBlock?.text?.trim() || tasteFingerprint;
+    } catch (err) {
+      console.error('Taste fingerprint generation failed:', err.message);
+    }
 
     // Cache taste in user record if it's their own profile
     if (id === req.userId) {

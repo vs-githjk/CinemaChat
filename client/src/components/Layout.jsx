@@ -15,7 +15,8 @@ export default function Layout() {
     <div className="app-shell min-h-screen flex flex-col">
       <div className="app-shell-background" aria-hidden="true">
         <Waves
-          lineColor="rgba(210, 18, 18, 0.28)"
+          lineColor="rgba(210, 18, 18, 0.42)"
+          glowColor="rgba(210, 18, 18, 0.24)"
           backgroundColor="transparent"
           waveSpeedX={0.0125}
           waveSpeedY={0.01}

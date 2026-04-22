@@ -112,12 +112,49 @@
   }
 
   .app-shell-waves {
-    opacity: 0.9;
+    opacity: 1;
     mix-blend-mode: screen;
+    filter: saturate(1.15) brightness(1.08);
   }
 
   .app-shell-content {
     position: relative;
+  }
+
+  .discover-shell {
+    position: relative;
+    isolation: isolate;
+    background:
+      linear-gradient(180deg, rgba(11, 16, 27, 0.94), rgba(10, 15, 24, 0.82)),
+      radial-gradient(circle at top, rgba(77, 163, 255, 0.08), transparent 55%);
+  }
+
+  .discover-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(720px 280px at 50% 0%, rgba(77, 163, 255, 0.08), transparent 62%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+    pointer-events: none;
+    z-index: -2;
+  }
+
+  .discover-shell-background {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    opacity: 0.95;
+  }
+
+  .discover-shell-waves {
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.18));
+  }
+
+  .discover-shell-layer {
+    position: relative;
+    z-index: 1;
   }
 
   .btn-primary {

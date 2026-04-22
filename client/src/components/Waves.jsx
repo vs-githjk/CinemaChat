@@ -89,6 +89,7 @@ class Noise {
 
 export default function Waves({
   lineColor = 'black',
+  glowColor = 'rgba(210, 18, 18, 0.2)',
   backgroundColor = 'transparent',
   waveSpeedX = 0.0125,
   waveSpeedY = 0.005,
@@ -343,6 +344,7 @@ export default function Waves({
       ref={containerRef}
       className={`waves ${className}`}
       style={{
+        '--waves-glow-color': glowColor,
         backgroundColor,
         ...style,
       }}
