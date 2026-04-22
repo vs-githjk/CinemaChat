@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react';
-import { getRecommendations, getReactions } from '../api/client.js';
+import { getPlaylists, getRecommendations, getReactions } from '../api/client.js';
 import MovieCard from '../components/MovieCard.jsx';
 import CollaborativeQuery from '../components/CollaborativeQuery.jsx';
+import PlaylistPicker from '../components/PlaylistPicker.jsx';
 import Waves from '../components/Waves.jsx';
 
 const SUGGESTIONS = [
@@ -18,13 +19,19 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [reactions, setReactions] = useState({});
+  const [playlists, setPlaylists] = useState([]);
   const [showCollaborative, setShowCollaborative] = useState(false);
+  const [playlistMovie, setPlaylistMovie] = useState(null);
+  const [notice, setNotice] = useState('');
   const bottomRef = useRef(null);
   const inputRef = useRef(null);
 
   useEffect(() => {
-    getReactions()
-      .then((r) => setReactions(r.data))
+    Promise.all([getReactions(), getPlaylists()])
+      .then(([reactionsResponse, playlistsResponse]) => {
+        setReactions(reactionsResponse.data);
+        setPlaylists(playlistsResponse.data || []);
+      })
       .catch(() => {});
   }, []);
 
@@ -64,6 +71,10 @@ export default function Chat() {
 
   const handleReaction = (tmdbMovieId, reaction) => {
     setReactions((prev) => ({ ...prev, [tmdbMovieId]: reaction }));
+  };
+
+  const handlePlaylistCreated = (playlist) => {
+    setPlaylists((prev) => [playlist, ...prev.filter((item) => item.id !== playlist.id)]);
   };
 
   return (
@@ -106,6 +117,12 @@ export default function Chat() {
       )}
 
       <div className="discover-shell-layer flex-1 overflow-y-auto py-6 px-4 sm:px-5 space-y-6">
+        {notice && (
+          <div className="bg-cinema-electric-blue/10 border border-cinema-electric-blue/40 rounded-xl px-4 py-3 text-sm text-cinema-electric-blue">
+            {notice}
+          </div>
+        )}
+
         {messages.length === 0 && !loading && (
           <div className="text-center py-10">
             <h3 className="text-2xl font-semibold mb-2">What are you in the mood for?</h3>
@@ -149,6 +166,7 @@ export default function Chat() {
                       movie={movie}
                       reaction={reactions[movie.tmdbId]}
                       onReaction={handleReaction}
+                      onAddToPlaylist={setPlaylistMovie}
                     />
                   ))}
                 </div>
@@ -200,6 +218,16 @@ export default function Chat() {
           </p>
         )}
       </div>
+
+      {playlistMovie && (
+        <PlaylistPicker
+          movie={playlistMovie}
+          playlists={playlists}
+          onClose={() => setPlaylistMovie(null)}
+          onPlaylistCreated={handlePlaylistCreated}
+          onSaved={setNotice}
+        />
+      )}
     </div>
   );
 }

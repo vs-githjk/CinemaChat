@@ -27,6 +27,16 @@ function activityCopy(item) {
       return 'saved this to watchlist';
     case 'watchlist_remove':
       return 'removed this from watchlist';
+    case 'playlist_create':
+      return `created a playlist${item.metadata?.title ? `: "${item.metadata.title}"` : ''}`;
+    case 'playlist_item_add':
+      return 'added a movie to a playlist';
+    case 'playlist_item_remove':
+      return 'removed a movie from a playlist';
+    case 'playlist_collaborator_add':
+      return 'invited a collaborator to a playlist';
+    case 'blend_create':
+      return `created a blend${item.metadata?.title ? `: "${item.metadata.title}"` : ''}`;
     default:
       return 'had new activity';
   }

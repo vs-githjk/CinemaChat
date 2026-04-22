@@ -3,6 +3,7 @@ import cors from 'cors';
 import crypto from 'crypto';
 
 import authRoutes from './routes/auth.js';
+import playlistRoutes from './routes/playlists.js';
 import recommendationRoutes from './routes/recommendations.js';
 import socialRoutes from './routes/social.js';
 import userRoutes from './routes/users.js';
@@ -46,6 +47,7 @@ export function createApp({ env, pool }) {
   app.use('/api/recommendations', createRateLimiter({ windowMs: 60_000, max: 20, keyPrefix: 'recommendations' }));
 
   app.use('/api/auth', authRoutes);
+  app.use('/api/playlists', playlistRoutes);
   app.use('/api/recommendations', recommendationRoutes);
   app.use('/api/social', socialRoutes);
   app.use('/api/users', userRoutes);
@@ -88,4 +90,3 @@ export function createApp({ env, pool }) {
 
   return app;
 }
-

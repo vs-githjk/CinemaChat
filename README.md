@@ -53,6 +53,17 @@ psql $DATABASE_URL -f db/schema.sql
 # Re-run this after schema updates (safe with IF NOT EXISTS).
 ```
 
+If `DATABASE_URL` is stored in your `.env`, load it first in your shell and then run the schema:
+
+```bash
+set -a
+source .env
+set +a
+psql "$DATABASE_URL" -f db/schema.sql
+```
+
+If `psql` is not installed yet, install PostgreSQL tools first and then rerun the command.
+
 ### 4. Install dependencies
 
 ```bash

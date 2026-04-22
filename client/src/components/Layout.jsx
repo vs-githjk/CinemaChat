@@ -76,6 +76,18 @@ export default function Layout() {
             >
               Friends
             </NavLink>
+            <NavLink
+              to="/library"
+              className={({ isActive }) =>
+                `px-3 py-1.5 rounded-full text-sm font-semibold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'text-white border border-cinema-accent/70 bg-cinema-accent/15'
+                    : 'text-gray-300 border border-cinema-border/60 hover:text-white hover:border-cinema-electric-blue/70'
+                }`
+              }
+            >
+              Library
+            </NavLink>
             {user && (
               <NavLink
                 to={`/profile/${user.id}`}

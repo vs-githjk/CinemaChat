@@ -9,6 +9,7 @@ import { parseJsonFromModelText } from '../utils/aiResponse.js';
 import { createCacheProvider } from '../cache/provider.js';
 import { reportError } from '../observability/monitoring.js';
 import { embedTexts } from '../utils/embeddings.js';
+import { ensureAcceptedFriendship, generateCollaborativeRecommendations } from '../utils/collaborative.js';
 
 const router = Router();
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -175,150 +176,22 @@ router.post('/collaborative', requireAuth, async (req, res) => {
   if (!friendId) return res.status(400).json({ error: 'Valid friendId is required' });
 
   try {
-    // Verify friendship
-    const friendCheck = await pool.query(
-      `SELECT id FROM friendships
-       WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
-         AND status = 'accepted'`,
-      [req.userId, friendId]
-    );
-    if (friendCheck.rows.length === 0) return res.status(403).json({ error: 'Not friends' });
+    const isFriend = await ensureAcceptedFriendship(pool, req.userId, friendId);
+    if (!isFriend) return res.status(403).json({ error: 'Not friends' });
 
-    // Get loved movies for both users
-    const lovedA = await pool.query(
-      `SELECT tmdb_movie_id FROM reactions WHERE user_id = $1 AND reaction = 'loved' LIMIT 10`,
-      [req.userId]
-    );
-    const lovedB = await pool.query(
-      `SELECT tmdb_movie_id FROM reactions WHERE user_id = $1 AND reaction = 'loved' LIMIT 10`,
-      [friendId]
-    );
-
-    const allLovedIds = [
-      ...lovedA.rows.map((r) => r.tmdb_movie_id),
-      ...lovedB.rows.map((r) => r.tmdb_movie_id),
-    ];
-
-    // Get recent queries for context
-    const queriesA = await pool.query(
-      'SELECT query_text FROM queries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
-      [req.userId]
-    );
-    const queriesB = await pool.query(
-      'SELECT query_text FROM queries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 5',
-      [friendId]
-    );
-
-    const userAName = (await pool.query('SELECT display_name FROM users WHERE id=$1', [req.userId])).rows[0]?.display_name;
-    const userBName = (await pool.query('SELECT display_name FROM users WHERE id=$1', [friendId])).rows[0]?.display_name;
-
-    // Fetch details for loved movies
-    const movieDetails = await Promise.all(
-      [...new Set(allLovedIds)].slice(0, 10).map(async (id) => {
-        try {
-          const r = await tmdbClient.get(`/movie/${id}`, { params: { api_key: TMDB_KEY } });
-          return r.data;
-        } catch { return null; }
-      })
-    );
-    const validMovies = movieDetails.filter(Boolean);
-
-    // Semantic search based on combined taste
-    const combinedQuery = [
-      ...queriesA.rows.map((q) => q.query_text),
-      ...queriesB.rows.map((q) => q.query_text),
-    ].join('. ');
-
-    let semanticCandidates = [];
-    if (combinedQuery) {
-      try {
-        const index = pinecone.index(process.env.PINECONE_INDEX_NAME);
-        const vectors = await embedTexts([combinedQuery.slice(0, 2000)], 'query');
-        const vector = vectors[0];
-        if (!vector?.length) throw new Error('Could not generate collaborative query embedding');
-        const results = await index.query({ vector, topK: 15, includeMetadata: true });
-        semanticCandidates = results.matches.map((m) => parseInt(m.id));
-      } catch (e) {
-        console.error('Pinecone error in collaborative:', e.message);
-      }
-    }
-
-    const semanticMovies = await Promise.all(
-      semanticCandidates.slice(0, 10).map(async (id) => {
-        try {
-          const r = await tmdbClient.get(`/movie/${id}`, { params: { api_key: TMDB_KEY } });
-          return r.data;
-        } catch { return null; }
-      })
-    );
-
-    const allCandidates = [...validMovies, ...semanticMovies.filter(Boolean)];
-    const deduped = allCandidates.filter((m, i, arr) => m && arr.findIndex((x) => x?.id === m?.id) === i);
-
-    const lovedTitles = validMovies.map((m) => `${m.title} (${m.release_date?.slice(0, 4)})`).join(', ');
-    const candidateList = deduped
-      .slice(0, 15)
-      .map((m, i) => `${i + 1}. [ID:${m.id}] ${m.title} (${m.release_date?.slice(0, 4)}) - ${m.overview?.slice(0, 100)}`)
-      .join('\n');
-
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1200,
-      system: `You're a film expert helping two friends find movies they'll BOTH enjoy.`,
-      messages: [
-        {
-          role: 'user',
-          content: `${userAName} and ${userBName} want to watch something together.
-
-Movies they've loved: ${lovedTitles || 'none recorded yet'}
-${userAName}'s recent searches: ${queriesA.rows.map((q) => q.query_text).join('; ') || 'none'}
-${userBName}'s recent searches: ${queriesB.rows.map((q) => q.query_text).join('; ') || 'none'}
-
-Candidate movies:
-${candidateList}
-
-Return a JSON array of 3 recommendations, each with:
-- "tmdbId": number
-- "explanation": string (why BOTH users would enjoy this — reference their tastes)
-
-Only valid JSON, no markdown.`,
-        },
-      ],
+    const collaborative = await generateCollaborativeRecommendations({
+      pool,
+      anthropic,
+      tmdbClient,
+      tmdbApiKey: TMDB_KEY,
+      userAId: req.userId,
+      userBId: friendId,
     });
 
-    const textBlock = msg.content.find((block) => block.type === 'text');
-    const parsed = parseJsonFromModelText(textBlock?.text || '');
-    const ranked = Array.isArray(parsed) ? parsed : [];
-
-    let results = ranked.map(({ tmdbId, explanation }) => {
-      const movie = deduped.find((m) => m?.id === tmdbId);
-      if (!movie) return null;
-      return {
-        tmdbId,
-        title: movie.title,
-        year: movie.release_date?.slice(0, 4),
-        rating: movie.vote_average?.toFixed(1),
-        genres: movie.genres?.map((g) => g.name).slice(0, 3),
-        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
-        overview: movie.overview,
-        explanation,
-      };
-    }).filter(Boolean);
-
-    if (results.length === 0) {
-      results = deduped.slice(0, 3).map((movie) => ({
-        tmdbId: movie.id,
-        title: movie.title,
-        year: movie.release_date?.slice(0, 4),
-        rating: movie.vote_average?.toFixed(1),
-        genres: movie.genres?.map((g) => g.name).slice(0, 3),
-        poster: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : null,
-        overview: movie.overview,
-        explanation: "A strong overlap pick based on both users' recent activity and liked titles.",
-      }));
-    }
-
-    res.json({ results, userAName, userBName });
+    res.json({
+      ...collaborative,
+      results: collaborative.results.slice(0, 3),
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

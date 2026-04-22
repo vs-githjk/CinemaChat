@@ -2,36 +2,43 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   addToWatchlist,
+  getPlaylists,
   getForYou,
   getOnboarding,
   getReactions,
   removeFromWatchlist,
 } from '../api/client.js';
 import MovieCard from '../components/MovieCard.jsx';
+import PlaylistPicker from '../components/PlaylistPicker.jsx';
 
 export default function ForYou() {
   const [rails, setRails] = useState([]);
   const [watchlist, setWatchlist] = useState({});
   const [reactions, setReactions] = useState({});
+  const [playlists, setPlaylists] = useState([]);
   const [generatedAt, setGeneratedAt] = useState(null);
   const [onboardingCompleted, setOnboardingCompleted] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [playlistMovie, setPlaylistMovie] = useState(null);
 
   const loadFeed = async () => {
     setLoading(true);
     setError('');
     try {
-      const [forYouResponse, reactionsResponse, onboardingResponse] = await Promise.all([
+      const [forYouResponse, reactionsResponse, onboardingResponse, playlistsResponse] = await Promise.all([
         getForYou(),
         getReactions(),
         getOnboarding(),
+        getPlaylists(),
       ]);
       setRails(forYouResponse.data.rails || []);
       setWatchlist(forYouResponse.data.watchlist || {});
       setGeneratedAt(forYouResponse.data.generatedAt || null);
       setReactions(reactionsResponse.data || {});
       setOnboardingCompleted(!!onboardingResponse.data?.completed);
+      setPlaylists(playlistsResponse.data || []);
     } catch (err) {
       setError(err.response?.data?.error || 'Could not load your For You feed');
     } finally {
@@ -62,6 +69,14 @@ export default function ForYou() {
     }
   };
 
+  const handlePlaylistCreated = (playlist) => {
+    setPlaylists((prev) => [playlist, ...prev.filter((item) => item.id !== playlist.id)]);
+  };
+
+  const handlePlaylistSaved = (message) => {
+    setNotice(message);
+  };
+
   return (
     <div className="max-w-6xl mx-auto w-full py-2 sm:py-4 space-y-7">
       <div className="card p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
@@ -85,6 +100,12 @@ export default function ForYou() {
       {error && (
         <div className="bg-red-900/20 border border-red-700 rounded-xl px-4 py-3 text-sm text-red-300">
           {error}
+        </div>
+      )}
+
+      {notice && (
+        <div className="bg-cinema-electric-blue/10 border border-cinema-electric-blue/40 rounded-xl px-4 py-3 text-sm text-cinema-electric-blue">
+          {notice}
         </div>
       )}
 
@@ -123,11 +144,22 @@ export default function ForYou() {
                 onReaction={handleReaction}
                 watchlisted={!!watchlist[movie.tmdbId]}
                 onToggleWatchlist={toggleWatchlist}
+                onAddToPlaylist={setPlaylistMovie}
               />
             ))}
           </div>
         </section>
       ))}
+
+      {playlistMovie && (
+        <PlaylistPicker
+          movie={playlistMovie}
+          playlists={playlists}
+          onClose={() => setPlaylistMovie(null)}
+          onPlaylistCreated={handlePlaylistCreated}
+          onSaved={handlePlaylistSaved}
+        />
+      )}
     </div>
   );
 }

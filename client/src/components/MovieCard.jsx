@@ -8,6 +8,7 @@ export default function MovieCard({
   onReaction,
   watchlisted = false,
   onToggleWatchlist,
+  onAddToPlaylist,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [reaction, setLocalReaction] = useState(initialReaction || null);
@@ -82,6 +83,14 @@ export default function MovieCard({
                   }`}
                 >
                   {watchlisted ? 'Saved' : '+ Watchlist'}
+                </button>
+              )}
+              {typeof onAddToPlaylist === 'function' && (
+                <button
+                  onClick={() => onAddToPlaylist(movie)}
+                  className="text-xs px-2.5 py-1 rounded-full border border-cinema-border text-gray-400 hover:text-gray-200 transition-colors"
+                >
+                  + Playlist
                 </button>
               )}
             </div>

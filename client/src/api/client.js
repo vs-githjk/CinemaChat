@@ -53,6 +53,15 @@ export const acceptFriendRequest = (friendshipId) => api.put('/social/friends/ac
 export const getFeed = () => api.get('/social/feed');
 export const getCollaborative = (friendId) => api.post('/social/collaborative', { friendId });
 
+// Playlists
+export const getPlaylists = () => api.get('/playlists');
+export const getPlaylist = (id) => api.get(`/playlists/${id}`);
+export const createPlaylist = (data) => api.post('/playlists', data);
+export const createBlendPlaylist = (data) => api.post('/playlists/blend', data);
+export const addPlaylistItem = (playlistId, data) => api.post(`/playlists/${playlistId}/items`, data);
+export const removePlaylistItem = (playlistId, itemId) => api.delete(`/playlists/${playlistId}/items/${itemId}`);
+export const addPlaylistCollaborator = (playlistId, userId) => api.post(`/playlists/${playlistId}/collaborators`, { userId });
+
 // Users
 export const searchUsers = (q) => api.get(`/users/search?q=${encodeURIComponent(q)}`);
 export const getUserProfile = (id) => api.get(`/users/${id}/profile`);

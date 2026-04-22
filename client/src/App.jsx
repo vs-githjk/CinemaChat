@@ -9,6 +9,7 @@ import Register from './pages/Register.jsx';
 import ForYou from './pages/ForYou.jsx';
 import Chat from './pages/Chat.jsx';
 import Feed from './pages/Feed.jsx';
+import Library from './pages/Library.jsx';
 import Profile from './pages/Profile.jsx';
 import Onboarding from './pages/Onboarding.jsx';
 
@@ -63,6 +64,7 @@ export default function App() {
       <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route index element={<OnboardingRequiredRoute><ForYou /></OnboardingRequiredRoute>} />
         <Route path="discover" element={<OnboardingRequiredRoute><Chat /></OnboardingRequiredRoute>} />
+        <Route path="library" element={<OnboardingRequiredRoute><Library /></OnboardingRequiredRoute>} />
         <Route path="feed" element={<OnboardingRequiredRoute><Feed /></OnboardingRequiredRoute>} />
         <Route path="onboarding" element={<OnboardingOnlyRoute><Onboarding /></OnboardingOnlyRoute>} />
         <Route path="profile/:id" element={<OnboardingRequiredRoute><Profile /></OnboardingRequiredRoute>} />

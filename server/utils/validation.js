@@ -9,6 +9,10 @@ export function sanitizeQuery(value, { maxLength = 400 } = {}) {
   return normalized.slice(0, maxLength);
 }
 
+export function sanitizeText(value, { maxLength = 400 } = {}) {
+  return sanitizeQuery(value, { maxLength });
+}
+
 export function sanitizeConversationHistory(value, { maxMessages = 24, maxChars = 500 } = {}) {
   if (!Array.isArray(value)) return [];
 
