@@ -20,6 +20,21 @@ function sanitizeStringArray(value, { maxItems = 8, maxLength = 40 } = {}) {
   return [...new Set(cleaned)].slice(0, maxItems);
 }
 
+async function isAcceptedFriend(userId, otherUserId) {
+  if (userId === otherUserId) return true;
+
+  const result = await pool.query(
+    `SELECT 1
+     FROM friendships
+     WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1))
+       AND status = 'accepted'
+     LIMIT 1`,
+    [userId, otherUserId]
+  );
+
+  return result.rows.length > 0;
+}
+
 router.get('/showcase', async (_req, res) => {
   try {
     if (showcaseCache.payload && Date.now() < showcaseCache.expiresAt) {
@@ -118,7 +133,7 @@ router.get('/search', requireAuth, async (req, res) => {
   if (!q) return res.status(400).json({ error: 'q is required' });
   try {
     const result = await pool.query(
-      `SELECT id, display_name, email FROM users
+      `SELECT id, display_name FROM users
        WHERE (display_name ILIKE $1 OR email ILIKE $1) AND id != $2
        LIMIT 10`,
       [`%${q}%`, req.userId]
@@ -134,8 +149,13 @@ router.get('/:id/profile', requireAuth, async (req, res) => {
   const id = parsePositiveInt(req.params?.id);
   if (!id) return res.status(400).json({ error: 'Invalid user id' });
   try {
+    const canViewProfile = await isAcceptedFriend(req.userId, id);
+    if (!canViewProfile) {
+      return res.status(403).json({ error: 'You can only view your own profile or accepted friends' });
+    }
+
     const userResult = await pool.query(
-      'SELECT id, display_name, email, created_at FROM users WHERE id = $1',
+      'SELECT id, display_name, created_at FROM users WHERE id = $1',
       [id]
     );
     if (userResult.rows.length === 0) return res.status(404).json({ error: 'User not found' });
@@ -174,6 +194,11 @@ router.get('/:id/taste', requireAuth, async (req, res) => {
   const id = parsePositiveInt(req.params?.id);
   if (!id) return res.status(400).json({ error: 'Invalid user id' });
   try {
+    const canViewTaste = await isAcceptedFriend(req.userId, id);
+    if (!canViewTaste) {
+      return res.status(403).json({ error: 'You can only view your own taste profile or accepted friends' });
+    }
+
     const queriesResult = await pool.query(
       'SELECT query_text FROM queries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20',
       [id]

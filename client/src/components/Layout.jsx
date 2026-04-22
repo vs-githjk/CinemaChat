@@ -1,5 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import useAuthStore from '../store/auth.js';
+import Waves from './Waves.jsx';
 
 export default function Layout() {
   const { user, logout } = useAuthStore();
@@ -11,7 +12,24 @@ export default function Layout() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="app-shell min-h-screen flex flex-col">
+      <div className="app-shell-background" aria-hidden="true">
+        <Waves
+          lineColor="rgba(210, 18, 18, 0.28)"
+          backgroundColor="transparent"
+          waveSpeedX={0.0125}
+          waveSpeedY={0.01}
+          waveAmpX={40}
+          waveAmpY={20}
+          friction={0.9}
+          tension={0.01}
+          maxCursorMove={120}
+          xGap={12}
+          yGap={36}
+          className="app-shell-waves"
+        />
+      </div>
+
       <header className="sticky top-0 z-20 backdrop-blur border-b border-cinema-border/60 bg-cinema-bg/75">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <NavLink to="/" className="text-2xl leading-none font-display font-bold">
@@ -81,7 +99,7 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col">
+      <main className="app-shell-content flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-4 sm:py-6 flex flex-col">
         <Outlet />
       </main>
     </div>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { setReaction } from '../api/client.js';
 import ReactionButtons from './ReactionButtons.jsx';
 
@@ -11,6 +11,10 @@ export default function MovieCard({
 }) {
   const [expanded, setExpanded] = useState(false);
   const [reaction, setLocalReaction] = useState(initialReaction || null);
+
+  useEffect(() => {
+    setLocalReaction(initialReaction || null);
+  }, [initialReaction]);
 
   const handleReaction = async (newReaction) => {
     const next = reaction === newReaction ? null : newReaction;

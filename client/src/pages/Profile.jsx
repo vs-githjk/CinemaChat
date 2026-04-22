@@ -16,18 +16,44 @@ export default function Profile() {
   const [collabLoading, setCollabLoading] = useState(false);
   const [isFriend, setIsFriend] = useState(false);
   const [collabError, setCollabError] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
+    let cancelled = false;
+
     setLoading(true);
+    setLoadError('');
+    setProfile(null);
+    setTaste(null);
     setCollaborative(null);
+    setIsFriend(false);
+    setCollabError('');
+
     Promise.all([
-      getUserProfile(id).then((r) => setProfile(r.data)),
-      getUserTaste(id).then((r) => setTaste(r.data)),
-      !isOwnProfile ? getFriends().then((r) => {
-        const friend = r.data.find((f) => f.id === parseInt(id) && f.status === 'accepted');
-        setIsFriend(!!friend);
-      }) : Promise.resolve(),
-    ]).finally(() => setLoading(false));
+      getUserProfile(id),
+      getUserTaste(id),
+      isOwnProfile ? Promise.resolve({ data: [] }) : getFriends(),
+    ])
+      .then(([profileResponse, tasteResponse, friendsResponse]) => {
+        if (cancelled) return;
+        setProfile(profileResponse.data);
+        setTaste(tasteResponse.data);
+        if (!isOwnProfile) {
+          const friend = friendsResponse.data.find((f) => f.id === parseInt(id, 10) && f.status === 'accepted');
+          setIsFriend(!!friend);
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setLoadError(err.response?.data?.error || 'Could not load this profile');
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id, isOwnProfile]);
 
   const handleCollaborative = async () => {
@@ -45,6 +71,9 @@ export default function Profile() {
 
   if (loading) {
     return <div className="text-center py-20 text-gray-500">Loading profile...</div>;
+  }
+  if (loadError) {
+    return <div className="text-center py-20 text-gray-500">{loadError}</div>;
   }
   if (!profile) {
     return <div className="text-center py-20 text-gray-500">User not found.</div>;

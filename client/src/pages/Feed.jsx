@@ -167,7 +167,6 @@ export default function Feed() {
                         <Link to={`/profile/${u.id}`} className="font-medium hover:text-cinema-accent">
                           {u.display_name}
                         </Link>
-                        <p className="text-xs text-gray-500">{u.email}</p>
                       </div>
                       {alreadyFriend ? (
                         <span className="text-xs text-gray-500">Friends</span>

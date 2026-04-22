@@ -72,6 +72,54 @@
     background: linear-gradient(145deg, rgba(11, 16, 27, 0.86), rgba(10, 15, 24, 0.74));
   }
 
+  .app-shell {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+  }
+
+  .app-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(1100px 520px at 10% -12%, rgba(210, 18, 18, 0.2), transparent 62%),
+      radial-gradient(900px 460px at 92% 4%, rgba(77, 163, 255, 0.16), transparent 58%),
+      linear-gradient(180deg, rgba(8, 9, 13, 0.72), rgba(8, 10, 16, 0.36));
+    pointer-events: none;
+    z-index: -3;
+  }
+
+  .app-shell::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 120px 120px;
+    mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.9), transparent 92%);
+    opacity: 0.26;
+    pointer-events: none;
+    z-index: -2;
+  }
+
+  .app-shell-background {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  .app-shell-waves {
+    opacity: 0.9;
+    mix-blend-mode: screen;
+  }
+
+  .app-shell-content {
+    position: relative;
+  }
+
   .btn-primary {
     @apply text-white font-semibold px-4 py-2 rounded-lg transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
     background: linear-gradient(100deg, #ff4d4f, #ff3236);

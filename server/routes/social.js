@@ -67,6 +67,11 @@ router.post('/friends/request', requireAuth, async (req, res) => {
   if (!friendId) return res.status(400).json({ error: 'Valid friendId is required' });
   if (friendId === req.userId) return res.status(400).json({ error: 'Cannot friend yourself' });
   try {
+    const userResult = await pool.query('SELECT id FROM users WHERE id = $1 LIMIT 1', [friendId]);
+    if (userResult.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
     const existing = await pool.query(
       `SELECT id, user_id, friend_id, status
        FROM friendships
