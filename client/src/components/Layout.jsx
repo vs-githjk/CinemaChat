@@ -31,7 +31,7 @@ export default function Layout() {
         />
       </div>
 
-      <header className="sticky top-0 z-20 backdrop-blur border-b border-cinema-border/60 bg-cinema-bg/75">
+      <header className="app-shell-header sticky top-0 z-20 backdrop-blur border-b border-cinema-border/60 bg-cinema-bg/75">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <NavLink to="/" className="text-2xl leading-none font-display font-bold">
             <span className="text-cinema-accent">Cinema</span>
