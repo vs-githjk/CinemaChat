@@ -70,8 +70,8 @@ export default function Chat() {
     <div className="discover-shell flex flex-col h-full max-w-5xl mx-auto w-full card overflow-hidden">
       <div className="discover-shell-background" aria-hidden="true">
         <Waves
-          lineColor="rgba(77, 163, 255, 0.18)"
-          glowColor="rgba(77, 163, 255, 0.16)"
+          lineColor="rgba(173, 128, 98, 0.12)"
+          glowColor="rgba(227, 180, 138, 0.1)"
           backgroundColor="transparent"
           waveSpeedX={0.009}
           waveSpeedY={0.006}
