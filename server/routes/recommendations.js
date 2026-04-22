@@ -34,6 +34,90 @@ const DEFAULT_FOR_YOU_SEEDS = [
   { title: 'Fresh Vibe Shift', query: 'a fresh cinematic direction adjacent to thriller, drama, and modern auteur films', subtitle: 'Branch out without losing your taste' },
 ];
 
+function uniqueStrings(values) {
+  return [...new Set((values || []).filter((value) => typeof value === 'string' && value.trim()).map((value) => value.trim()))];
+}
+
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function rotateList(items, offset) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+  const safeOffset = ((offset % items.length) + items.length) % items.length;
+  return [...items.slice(safeOffset), ...items.slice(0, safeOffset)];
+}
+
+function buildLocalForYouSeeds(taste) {
+  const genres = uniqueStrings(taste.onboarding?.favorite_genres).slice(0, 3);
+  const moods = uniqueStrings(taste.onboarding?.moods).slice(0, 3);
+  const favoriteMovies = uniqueStrings([
+    ...(taste.onboarding?.favorite_movies || []),
+    ...(taste.lovedTitles || []),
+  ]).slice(0, 3);
+  const recentQueries = uniqueStrings(taste.recentQueries).slice(0, 3);
+  const friendTerms = uniqueStrings(taste.friendProfile?.friendsRecentSearchTerms).slice(0, 2);
+  const friendLovedTitles = uniqueStrings(taste.friendProfile?.friendsLovedTitles).slice(0, 2);
+
+  const seeds = [];
+
+  if (genres.length > 0 || moods.length > 0) {
+    seeds.push({
+      title: genres.length > 0 ? `${genres.join(' + ')} For Tonight` : 'Built Around Your Mood',
+      subtitle: 'Drawn from your onboarding taste profile',
+      query: [
+        'cinematic',
+        genres.join(' '),
+        moods.join(' '),
+        'movies with strong atmosphere, standout direction, and emotional payoff',
+      ].filter(Boolean).join(' '),
+    });
+  }
+
+  if (favoriteMovies.length > 0) {
+    seeds.push({
+      title: `If You Loved ${favoriteMovies[0]}`,
+      subtitle: 'Titles adjacent to your favorite films',
+      query: `movies with the tone, craft, and emotional resonance of ${favoriteMovies.join(', ')}, but not the exact same mainstream picks`,
+    });
+  }
+
+  if (recentQueries.length > 0) {
+    seeds.push({
+      title: 'Based On What You Searched Recently',
+      subtitle: 'Fresh picks evolving with your latest curiosity',
+      query: `recommend movies that bridge these search vibes: ${recentQueries.join('; ')}. Prioritize variety, strong reviews, and distinct mood`,
+    });
+  }
+
+  if (friendTerms.length > 0 || friendLovedTitles.length > 0) {
+    seeds.push({
+      title: 'You And Your Circle',
+      subtitle: 'A social mix shaped by shared taste signals',
+      query: `thoughtful crowd-pleasing movies that balance my taste with my friends' interests. Friend searches: ${friendTerms.join('; ') || 'none'}. Friend-loved titles: ${friendLovedTitles.join(', ') || 'none'}`,
+    });
+  }
+
+  seeds.push({
+    title: 'A Left Turn You Might Actually Love',
+    subtitle: 'Designed to widen your taste without losing the thread',
+    query: `surprising but accessible films adjacent to ${genres.join(' ')} ${moods.join(' ')} ${favoriteMovies.join(' ')} with a fresh point of view and high rewatch potential`,
+  });
+
+  return seeds
+    .map((seed) => ({
+      title: seed.title.trim().slice(0, 80),
+      subtitle: seed.subtitle.trim().slice(0, 120),
+      query: seed.query.trim().replace(/\s+/g, ' ').slice(0, 220),
+    }))
+    .filter((seed) => seed.title && seed.query)
+    .slice(0, 4);
+}
+
 // ──────────────────────────────────────────────
 // Tool implementations
 // ──────────────────────────────────────────────
@@ -390,10 +474,15 @@ Respond ONLY with the JSON — no markdown, no preamble.`;
   throw new Error('Agentic loop exceeded maximum iterations');
 }
 
-async function fallbackRecommendations(userQuery) {
-  const vibeMatches = await searchMoviesByVibe(userQuery, 5);
+async function fallbackRecommendations(userQuery, { excludeTmdbIds = [], userId = 'fallback' } = {}) {
+  const vibeMatches = await searchMoviesByVibe(userQuery, 18);
+  const excluded = new Set((excludeTmdbIds || []).map((value) => Number(value)).filter((value) => Number.isInteger(value)));
+  const filteredMatches = vibeMatches.filter((match) => !excluded.has(match.tmdbId));
+  const candidateMatches = filteredMatches.length >= 5 ? filteredMatches : vibeMatches;
+  const rotationKey = `${userId}:${new Date().toISOString().slice(0, 10)}:${userQuery.toLowerCase()}`;
+  const rotatedMatches = rotateList(candidateMatches, hashString(rotationKey));
   const details = await Promise.all(
-    vibeMatches.slice(0, 5).map(async (match) => {
+    rotatedMatches.slice(0, 8).map(async (match) => {
       try {
         const movie = await getMovieDetails(match.tmdbId);
         return {
@@ -409,7 +498,7 @@ async function fallbackRecommendations(userQuery) {
 }
 
 async function getUserTasteSnapshot(userId) {
-  const [queriesResult, reactionsResult, onboardingResult] = await Promise.all([
+  const [queriesResult, reactionsResult, onboardingResult, watchlistResult, recommendationsResult] = await Promise.all([
     pool.query(
       'SELECT query_text FROM queries WHERE user_id = $1 ORDER BY created_at DESC LIMIT 25',
       [userId]
@@ -429,6 +518,20 @@ async function getUserTasteSnapshot(userId) {
        LIMIT 1`,
       [userId]
     ),
+    pool.query(
+      `SELECT tmdb_movie_id
+       FROM watchlist_items
+       WHERE user_id = $1`,
+      [userId]
+    ),
+    pool.query(
+      `SELECT DISTINCT r.tmdb_movie_id
+       FROM recommendations r
+       JOIN queries q ON q.id = r.query_id
+       WHERE q.user_id = $1
+       ORDER BY r.tmdb_movie_id`,
+      [userId]
+    ),
   ]);
 
   const queryTexts = queriesResult.rows.map((r) => r.query_text);
@@ -439,9 +542,27 @@ async function getUserTasteSnapshot(userId) {
   const watchedCount = reactionsResult.rows.filter((r) => r.reaction === 'watched').length;
   const passCount = reactionsResult.rows.filter((r) => r.reaction === 'pass').length;
   const friendProfile = await getFriendTasteProfile(userId);
+  const seenMovieIds = uniqueStrings([
+    ...reactionsResult.rows.map((row) => String(row.tmdb_movie_id)),
+    ...watchlistResult.rows.map((row) => String(row.tmdb_movie_id)),
+    ...recommendationsResult.rows.map((row) => String(row.tmdb_movie_id)),
+  ]).map((value) => Number(value)).filter((value) => Number.isInteger(value));
 
   const lovedTitles = await Promise.all(
     lovedIds.map(async (movieId) => {
+      try {
+        const response = await tmdbClient.get(`/movie/${movieId}`, {
+          params: { api_key: TMDB_KEY, language: 'en-US' },
+        });
+        return response.data?.title || null;
+      } catch {
+        return null;
+      }
+    })
+  );
+
+  const friendLovedTitles = await Promise.all(
+    uniqueStrings(friendProfile.friendsLovedMovieIds.map((movieId) => String(movieId))).slice(0, 6).map(async (movieId) => {
       try {
         const response = await tmdbClient.get(`/movie/${movieId}`, {
           params: { api_key: TMDB_KEY, language: 'en-US' },
@@ -458,8 +579,12 @@ async function getUserTasteSnapshot(userId) {
     lovedTitles: lovedTitles.filter(Boolean),
     watchedCount,
     passCount,
-    friendProfile,
+    friendProfile: {
+      ...friendProfile,
+      friendsLovedTitles: friendLovedTitles.filter(Boolean),
+    },
     onboarding: onboardingResult.rows[0] || null,
+    seenMovieIds,
   };
 }
 
@@ -477,8 +602,11 @@ function normalizeRailSeeds(parsed) {
   return normalized.length > 0 ? normalized : DEFAULT_FOR_YOU_SEEDS;
 }
 
-async function generateForYouSeeds(userId) {
-  const taste = await getUserTasteSnapshot(userId);
+async function generateForYouSeeds(userId, taste) {
+  const localSeeds = buildLocalForYouSeeds(taste);
+  if (taste.recentQueries.length === 0 && taste.lovedTitles.length === 0 && !taste.onboarding && localSeeds.length === 0) {
+    return DEFAULT_FOR_YOU_SEEDS;
+  }
 
   const prompt = `You are creating a personalized movie home feed.
 
@@ -515,18 +643,21 @@ Rules:
 
     const text = response.content.find((b) => b.type === 'text')?.text || '';
     const parsed = parseJsonFromModelText(text);
-    return normalizeRailSeeds(parsed);
+    const normalized = normalizeRailSeeds(parsed);
+    return normalized.length > 0 ? normalized : (localSeeds.length > 0 ? localSeeds : DEFAULT_FOR_YOU_SEEDS);
   } catch (err) {
     console.error('Failed to generate for-you seeds:', err.message);
-    return DEFAULT_FOR_YOU_SEEDS;
+    return localSeeds.length > 0 ? localSeeds : DEFAULT_FOR_YOU_SEEDS;
   }
 }
 
 async function buildForYouRails(userId) {
-  const seeds = await generateForYouSeeds(userId);
+  const taste = await getUserTasteSnapshot(userId);
+  const seeds = await generateForYouSeeds(userId, taste);
   const rails = [];
-  const friendOverlap = await getFriendTasteProfile(userId);
+  const friendOverlap = taste.friendProfile;
   const overlapIds = friendOverlap.friendsLovedMovieIds.slice(0, 3);
+  const usedMovieIds = new Set(taste.seenMovieIds);
 
   for (let i = 0; i < seeds.length; i++) {
     const seed = seeds[i];
@@ -534,10 +665,27 @@ async function buildForYouRails(userId) {
 
     try {
       const result = await runAgenticLoop(seed.query, [], userId);
-      recommendations = result.recommendations;
+      recommendations = result.recommendations.filter((movie) => !usedMovieIds.has(movie.tmdbId));
     } catch {
-      recommendations = await fallbackRecommendations(seed.query);
+      recommendations = await fallbackRecommendations(seed.query, {
+        excludeTmdbIds: [...usedMovieIds],
+        userId: `${userId}:rail:${i}`,
+      });
     }
+
+    if (recommendations.length < 4) {
+      const fallback = await fallbackRecommendations(seed.query, {
+        excludeTmdbIds: [...usedMovieIds],
+        userId: `${userId}:rail:${i}:fallback`,
+      });
+      const seenThisRail = new Set(recommendations.map((movie) => movie.tmdbId));
+      recommendations = [
+        ...recommendations,
+        ...fallback.filter((movie) => !seenThisRail.has(movie.tmdbId)),
+      ];
+    }
+
+    recommendations.slice(0, 5).forEach((movie) => usedMovieIds.add(movie.tmdbId));
 
     rails.push({
       id: `rail-${i + 1}`,

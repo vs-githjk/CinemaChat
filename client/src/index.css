@@ -197,6 +197,16 @@
     box-shadow: 0 8px 32px rgba(1, 4, 12, 0.35);
   }
 
+  .movie-card {
+    background:
+      linear-gradient(135deg, rgba(255, 247, 236, 0.08), rgba(255, 244, 228, 0.03) 28%, rgba(18, 23, 34, 0.92) 68%),
+      linear-gradient(145deg, rgba(24, 28, 39, 0.96), rgba(15, 19, 29, 0.84));
+    border-color: rgba(244, 226, 200, 0.18);
+    box-shadow:
+      0 10px 32px rgba(1, 4, 12, 0.38),
+      inset 0 1px 0 rgba(255, 250, 240, 0.12);
+  }
+
   .input {
     @apply border text-white placeholder-gray-500 rounded-lg px-4 py-2.5 w-full focus:outline-none transition-all;
     background: rgba(13, 18, 28, 0.75);

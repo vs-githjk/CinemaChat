@@ -29,7 +29,7 @@ export default function MovieCard({
   };
 
   return (
-    <div className="card overflow-hidden transition-all duration-200 hover:border-cinema-electric-blue/70 hover:shadow-[0_14px_30px_rgba(6,12,30,0.45)]">
+    <div className="card movie-card overflow-hidden transition-all duration-200 hover:border-cinema-electric-blue/70 hover:shadow-[0_14px_30px_rgba(6,12,30,0.45)]">
       <div className="flex gap-4 p-4">
         <div className="flex-shrink-0">
           {movie.poster ? (
