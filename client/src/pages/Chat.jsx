@@ -3,7 +3,6 @@ import { getPlaylists, getRecommendations, getReactions } from '../api/client.js
 import MovieCard from '../components/MovieCard.jsx';
 import CollaborativeQuery from '../components/CollaborativeQuery.jsx';
 import PlaylistPicker from '../components/PlaylistPicker.jsx';
-import Waves from '../components/Waves.jsx';
 
 const SUGGESTIONS = [
   'Something like Inception but more emotional',
@@ -78,25 +77,7 @@ export default function Chat() {
   };
 
   return (
-    <div className="discover-shell flex flex-col h-full max-w-5xl mx-auto w-full card overflow-hidden">
-      <div className="discover-shell-background" aria-hidden="true">
-        <Waves
-          lineColor="rgba(118, 163, 233, 0.24)"
-          glowColor="rgba(188, 220, 255, 0.14)"
-          backgroundColor="transparent"
-          waveSpeedX={0.009}
-          waveSpeedY={0.006}
-          waveAmpX={26}
-          waveAmpY={12}
-          friction={0.92}
-          tension={0.0075}
-          maxCursorMove={80}
-          xGap={14}
-          yGap={34}
-          className="discover-shell-waves"
-        />
-      </div>
-
+    <div className="discover-shell discover-frame flex flex-col h-full max-w-5xl mx-auto w-full overflow-hidden">
       <div className="discover-shell-layer flex items-center justify-between py-4 px-4 sm:px-5 border-b border-cinema-border/80 flex-shrink-0">
         <div>
           <h2 className="text-lg sm:text-xl font-semibold">Discover</h2>
@@ -124,21 +105,23 @@ export default function Chat() {
         )}
 
         {messages.length === 0 && !loading && (
-          <div className="text-center py-10">
-            <h3 className="text-2xl font-semibold mb-2">What are you in the mood for?</h3>
-            <p className="text-gray-400 mb-8 text-sm">
-              Describe a vibe, name a director, or ask for something specific.
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl mx-auto">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => sendQuery(s)}
-                  className="text-left px-4 py-3 rounded-xl border border-cinema-border/70 bg-cinema-bg/35 hover:border-cinema-electric-blue/70 text-sm text-gray-300 hover:text-white transition-all"
-                >
-                  "{s}"
-                </button>
-              ))}
+          <div className="discover-hero text-center py-10">
+            <div className="discover-hero-content">
+              <h3 className="text-2xl font-semibold mb-2">What are you in the mood for?</h3>
+              <p className="text-gray-400 mb-8 text-sm">
+                Describe a vibe, name a director, or ask for something specific.
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-w-2xl mx-auto">
+                {SUGGESTIONS.map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => sendQuery(s)}
+                    className="text-left px-4 py-3 rounded-xl border border-cinema-border/70 bg-cinema-bg/35 hover:border-cinema-electric-blue/70 text-sm text-gray-300 hover:text-white transition-all"
+                  >
+                    "{s}"
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}

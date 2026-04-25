@@ -12,8 +12,8 @@
   body {
     @apply bg-cinema-bg text-white font-sans antialiased;
     background-image:
-      radial-gradient(1200px 500px at 10% -20%, rgba(255, 77, 79, 0.22), transparent 60%),
-      radial-gradient(1000px 450px at 90% -10%, rgba(77, 163, 255, 0.2), transparent 58%),
+      radial-gradient(1200px 500px at 10% -20%, rgba(68, 55, 255, 0.18), transparent 60%),
+      radial-gradient(1000px 450px at 90% -10%, rgba(96, 70, 255, 0.16), transparent 58%),
       linear-gradient(180deg, #08090d 0%, #0b0f17 58%, #08090d 100%);
     background-attachment: fixed;
     min-height: 100vh;
@@ -77,10 +77,10 @@
     isolation: isolate;
     overflow: hidden;
     box-shadow:
-      inset 0 0 0 1px rgba(178, 225, 255, 0.18),
-      inset 0 1px 0 rgba(235, 246, 255, 0.28),
-      inset 1px 0 0 rgba(132, 196, 255, 0.16),
-      inset -1px 0 0 rgba(132, 196, 255, 0.16);
+      inset 0 0 0 1px rgba(108, 126, 255, 0.18),
+      inset 0 1px 0 rgba(214, 218, 255, 0.18),
+      inset 1px 0 0 rgba(90, 106, 255, 0.14),
+      inset -1px 0 0 rgba(90, 106, 255, 0.14);
   }
 
   .app-shell::before {
@@ -88,8 +88,8 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(1100px 520px at 10% -12%, rgba(186, 220, 255, 0.16), transparent 62%),
-      radial-gradient(900px 460px at 92% 4%, rgba(111, 162, 241, 0.18), transparent 58%),
+      radial-gradient(1100px 520px at 10% -12%, rgba(82, 68, 255, 0.14), transparent 62%),
+      radial-gradient(900px 460px at 92% 4%, rgba(96, 72, 255, 0.16), transparent 58%),
       linear-gradient(180deg, rgba(8, 9, 13, 0.72), rgba(8, 10, 16, 0.36));
     pointer-events: none;
     z-index: -3;
@@ -116,10 +116,70 @@
     z-index: -1;
   }
 
+  .discover-route-background {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+    background:
+      radial-gradient(1600px 920px at 50% 54%, rgba(71, 82, 255, 0.28), transparent 68%),
+      linear-gradient(180deg, rgba(7, 9, 15, 0.98), rgba(7, 10, 18, 0.95));
+  }
+
+  .discover-route-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(34% 15% at 50% 22%, rgba(6, 8, 14, 0.84), transparent 72%),
+      radial-gradient(62% 34% at 50% 54%, rgba(58, 40, 255, 0.18), transparent 78%);
+    mix-blend-mode: screen;
+    opacity: 0.92;
+  }
+
+  .discover-route-background .evil-eye-container {
+    position: absolute;
+    inset: 0;
+    opacity: 0.68;
+    filter: saturate(1.22) brightness(1.14);
+    mask-image: radial-gradient(ellipse at 50% 54%, rgba(0, 0, 0, 0.99), rgba(0, 0, 0, 0.92) 24%, rgba(0, 0, 0, 0.64) 48%, rgba(0, 0, 0, 0.22) 70%, transparent 90%);
+  }
+
+  .library-route-background {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: -1;
+    overflow: hidden;
+    background:
+      radial-gradient(1200px 720px at 50% 42%, rgba(84, 72, 255, 0.18), transparent 66%),
+      linear-gradient(180deg, rgba(14, 12, 25, 0.98), rgba(10, 11, 20, 0.96));
+  }
+
+  .library-route-background::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(28% 18% at 24% 24%, rgba(255, 255, 255, 0.08), transparent 64%),
+      radial-gradient(34% 24% at 74% 64%, rgba(88, 72, 255, 0.14), transparent 72%),
+      linear-gradient(180deg, rgba(8, 8, 16, 0.12), rgba(8, 8, 16, 0.28));
+    opacity: 0.88;
+    pointer-events: none;
+  }
+
+  .library-route-background .floating-lines-container {
+    position: absolute;
+    inset: 0;
+    opacity: 0.9;
+    filter: saturate(1.08) brightness(0.92);
+  }
+
   .app-shell-waves {
     opacity: 1;
     mix-blend-mode: screen;
-    filter: saturate(1.25) brightness(1.35);
+    filter: saturate(1.32) brightness(1.38);
   }
 
   .app-shell-content {
@@ -140,8 +200,46 @@
     position: relative;
     isolation: isolate;
     background:
-      linear-gradient(180deg, rgba(11, 16, 27, 0.94), rgba(10, 15, 24, 0.82)),
-      radial-gradient(circle at top, rgba(124, 165, 235, 0.1), transparent 55%);
+      linear-gradient(180deg, rgba(16, 19, 30, 0.12), rgba(12, 15, 24, 0.06)),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.004));
+    backdrop-filter: blur(6px);
+  }
+
+  .discover-frame {
+    border: 1px solid rgba(120, 142, 202, 0.34);
+    border-radius: 0.95rem;
+    box-shadow:
+      0 18px 42px rgba(1, 4, 12, 0.26),
+      inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  }
+
+  .library-hero {
+    position: relative;
+    min-height: 10.5rem;
+    border-color: rgba(112, 118, 208, 0.36);
+    background:
+      linear-gradient(180deg, rgba(30, 28, 48, 0.2), rgba(20, 18, 36, 0.1)),
+      linear-gradient(145deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.004));
+  }
+
+  .library-hero-content {
+    position: relative;
+    z-index: 1;
+  }
+
+  .library-page .card {
+    background:
+      linear-gradient(145deg, rgba(255, 246, 229, 0.1), rgba(255, 237, 210, 0.035)),
+      linear-gradient(145deg, rgba(22, 24, 38, 0.34), rgba(16, 18, 31, 0.18));
+    backdrop-filter: blur(8px);
+    box-shadow:
+      0 10px 28px rgba(1, 4, 12, 0.2),
+      inset 0 1px 0 rgba(255, 248, 234, 0.12);
+  }
+
+  .library-page .input {
+    background: rgba(12, 16, 26, 0.58);
+    border-color: rgba(63, 78, 120, 0.72);
   }
 
   .discover-shell::before {
@@ -149,8 +247,8 @@
     position: absolute;
     inset: 0;
     background:
-      radial-gradient(720px 280px at 50% 0%, rgba(187, 219, 255, 0.1), transparent 62%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+      linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
+      radial-gradient(980px 580px at 50% 54%, rgba(109, 126, 255, 0.04), transparent 74%);
     pointer-events: none;
     z-index: -2;
   }
@@ -171,6 +269,63 @@
   .discover-shell-layer {
     position: relative;
     z-index: 1;
+  }
+
+  .discover-hero {
+    position: relative;
+    isolation: isolate;
+    min-height: 28rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .discover-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(34% 16% at 50% 22%, rgba(5, 7, 12, 0.32), transparent 72%),
+      linear-gradient(180deg, rgba(7, 9, 15, 0.01), rgba(7, 9, 15, 0.04));
+    filter: blur(16px);
+    opacity: 1;
+    pointer-events: none;
+    z-index: -2;
+  }
+
+  .discover-hero-content {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 52rem;
+    margin-inline: auto;
+  }
+
+  .discover-hero-content > h3,
+  .discover-hero-content > p {
+    text-shadow: 0 6px 24px rgba(0, 0, 0, 0.68);
+  }
+
+  .discover-hero-content .grid {
+    position: relative;
+  }
+
+  .discover-hero-content .grid::before {
+    content: '';
+    position: absolute;
+    inset: -0.85rem -1rem;
+    border-radius: 1.75rem;
+    background: linear-gradient(180deg, rgba(8, 10, 18, 0.1), rgba(8, 10, 18, 0.04));
+    backdrop-filter: blur(1px);
+    pointer-events: none;
+    z-index: -1;
+  }
+
+  @media (max-width: 640px) {
+    .discover-hero {
+      min-height: 24rem;
+    }
   }
 
   .btn-primary {

@@ -225,13 +225,15 @@ export default function Library() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto w-full py-2 sm:py-4 space-y-7">
-      <div className="card p-5 sm:p-6">
-        <p className="text-xs uppercase tracking-[0.18em] text-cinema-electric-blue font-semibold">Library</p>
-        <h1 className="text-3xl sm:text-4xl font-bold mt-2">Playlists And Blends</h1>
-        <p className="text-sm text-gray-300 mt-2">
-          Build collections, save discoveries, and create a shared blend with a friend.
-        </p>
+    <div className="library-page max-w-6xl mx-auto w-full py-1 sm:py-3 space-y-5">
+      <div className="library-hero card p-5 sm:p-6 overflow-hidden">
+        <div className="library-hero-content">
+          <p className="text-xs uppercase tracking-[0.18em] text-cinema-electric-blue font-semibold">Library</p>
+          <h1 className="text-3xl sm:text-4xl font-bold mt-2">Playlists And Blends</h1>
+          <p className="text-sm text-gray-200 mt-2 max-w-2xl">
+            Build collections, save discoveries, and create a shared blend with a friend.
+          </p>
+        </div>
       </div>
 
       {error && (
@@ -246,8 +248,8 @@ export default function Library() {
         </div>
       )}
 
-      <div className="grid gap-6 lg:grid-cols-[360px_minmax(0,1fr)]">
-        <div className="space-y-6">
+      <div className="grid gap-5 lg:grid-cols-[360px_minmax(0,1fr)]">
+        <div className="space-y-5">
           <form onSubmit={handleCreatePlaylist} className="card p-5 space-y-4">
             <h2 className="text-lg font-semibold">Create Playlist</h2>
             <input
