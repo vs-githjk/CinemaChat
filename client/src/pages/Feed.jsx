@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getFeed, getFriends, sendFriendRequest, acceptFriendRequest, searchUsers } from '../api/client.js';
 import useAuthStore from '../store/auth.js';
+import FeedBackground from '../components/FeedBackground.jsx';
 
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -88,9 +89,11 @@ export default function Feed() {
   const accepted = friends.filter((f) => f.status === 'accepted');
 
   return (
-    <div className="max-w-2xl mx-auto w-full py-6 px-2">
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-cinema-card rounded-lg p-1 border border-cinema-border">
+    <>
+      <FeedBackground />
+      <div className="max-w-2xl mx-auto w-full py-6 px-2 relative z-10">
+        {/* Tabs */}
+        <div className="flex gap-1 mb-6 bg-cinema-card rounded-lg p-1 border border-cinema-border">
         {['feed', 'friends'].map((t) => (
           <button
             key={t}
@@ -243,6 +246,7 @@ export default function Feed() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </>
   );
 }
